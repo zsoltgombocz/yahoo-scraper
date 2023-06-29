@@ -1,7 +1,6 @@
 import express, { Application, Request, Response } from "express";
 import routes from './routes';
 import { client } from "./db";
-import { getFilteredStocks } from "./scrapeStocks";
 
 const app: Application = express();
 
