@@ -61,24 +61,23 @@ const getAllStocks = (baseURL: string | undefined): Promise<string[]> => {
     });
 }
 
-export const getFilteredStocks = (): Promise<string[]> => {
-    return new Promise(async (resolve, reject) => {
-        globalState.setStocksState(STATE.DOING);
+export const saveFilteredStocks = async (): Promise<void> => {
+    globalState.setStocksState(STATE.DOING);
 
-        try {
-            const allStocks = await getAllStocks(process.env.FINVIZ_BASE_URL);
-            const financialStocks = await getAllStocks(process.env.FINVIZ_EXCLUDE_URL);
+    try {
+        const allStocks = await getAllStocks(process.env.FINVIZ_BASE_URL);
+        const financialStocks = await getAllStocks(process.env.FINVIZ_EXCLUDE_URL);
 
-            const filteredStocks = allStocks.filter(stock => !financialStocks.includes(stock));
+        const filteredStocks = allStocks.filter(stock => !financialStocks.includes(stock));
 
-            filteredStocks.forEach(async stock => {
-                await client.set(stock, JSON.stringify({}));
-            });
+        filteredStocks.forEach(async stock => {
+            await client.set(stock, JSON.stringify({}));
+        });
 
-            await client.set('finviz_last', Date.now().toString());
-            globalState.setStocksState(STATE.DONE);
-        } catch (error) {
-            console.log(error);
-        }
-    });
+        await client.set('finviz_last', Date.now().toString());
+        globalState.setStocksState(STATE.DONE);
+    } catch (error) {
+        console.log(error);
+        globalState.setStocksState(STATE.ERROR);
+    }
 } 
