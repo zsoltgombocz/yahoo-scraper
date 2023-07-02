@@ -1,6 +1,6 @@
 import { load } from "cheerio";
 import { STATE, globalState } from "./state";
-import { client } from './db';
+import { client, fetchType, saveStock, saveUpdateTime, stockInterface } from './db';
 
 interface screenerPageInterface {
     stocks: string[];
@@ -71,10 +71,15 @@ export const saveFilteredStocks = async (): Promise<void> => {
         const filteredStocks = allStocks.filter(stock => !financialStocks.includes(stock));
 
         filteredStocks.forEach(async stock => {
+            await saveStock({
+                name: stock,
+                financialData: null
+            } as stockInterface);
             await client.set(stock, JSON.stringify({}));
         });
 
-        await client.set('finviz_last', Date.now().toString());
+        await saveUpdateTime(fetchType.FINVIZ, Date.now());
+
         globalState.setStocksState(STATE.DONE);
     } catch (error) {
         console.log(error);
