@@ -1,25 +1,11 @@
-import { getPage } from './browser';
+import { BROWSER, getPage } from './browser';
 import { load } from "cheerio";
 import { STATE, globalState } from './state';
-import { client } from './db';
+import { annualDataInterface, client, fetchType, getStocks, quarterlyDataInterface, saveStock, saveUpdateTime, stockFinancialDataInterface, stockInterface } from './db';
 import { Page } from 'puppeteer';
+import { nonStockKeys } from './utils';
 
-interface stockFinancialDataInterface {
-    annual: annualDataInterface[],
-    quarterly: quarterlyDataInterface[],
-}
 
-interface annualDataInterface {
-    year: number;
-    totalAssets: number | null;
-    totalDebt: number | null;
-    netTangibleAssets: number | null;
-    [key: string]: number | null;
-}
-
-interface quarterlyDataInterface extends annualDataInterface {
-    quarter: number;
-}
 
 interface rawHTMLs {
     annual: string | undefined;
@@ -103,7 +89,6 @@ const getFinancialData = (stock: string): Promise<stockFinancialDataInterface | 
         } catch (error) {
             resolve(null);
         }
-
     });
 }
 
@@ -181,25 +166,31 @@ const getQuarterlyData = (quarterlyBalanceSheetHTML: string | undefined): quarte
 
 export const saveFinancialData = async (): Promise<void> => {
     globalState.setFinanceState(STATE.DOING);
-    const excludeKeys = ['finviz_last', 'finance_last'];
+
     try {
-        const allKeys = await client.keys('*');
-        const stocks = allKeys.filter(key => !excludeKeys.includes(key));
+        const stocks = await getStocks();
 
         for (let stock of stocks) {
             const data = await getFinancialData(stock);
             if (data !== null) {
                 console.log(`${stock} financial data saved...`);
-                await client.set(stock, JSON.stringify(data));
+                await saveStock({
+                    name: stock,
+                    financialData: data
+                } as stockInterface)
+
             } else {
                 console.log(`Error fetching ${stock}, continuing...`)
             }
         }
 
-        await client.set('finance_last', Date.now().toString());
+        await saveUpdateTime(fetchType.YAHOO, Date.now());
+
         globalState.setFinanceState(STATE.DONE);
+        BROWSER?.close();
     } catch (error) {
         console.log('Financial save error', error);
         globalState.setFinanceState(STATE.ERROR);
+        BROWSER?.close();
     }
 } 
