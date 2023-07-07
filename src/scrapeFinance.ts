@@ -1,11 +1,8 @@
 import { BROWSER, getPage } from './browser';
 import { load } from "cheerio";
 import { STATE, globalState } from './state';
-import { annualDataInterface, client, fetchType, getStocks, quarterlyDataInterface, saveStock, saveUpdateTime, stockFinancialDataInterface, stockInterface } from './db';
+import { annualDataInterface, fetchType, getStocks, quarterlyDataInterface, saveStock, saveUpdateTime, stockFinancialDataInterface, stockInterface } from './db';
 import { Page } from 'puppeteer';
-import { nonStockKeys } from './utils';
-
-
 
 interface rawHTMLs {
     annual: string | undefined;
@@ -112,7 +109,7 @@ const getAnnualData = (annualBalanceSheetHTML: string | undefined): annualDataIn
             includeRows.map(includeRow => {
                 const row = $(`.fi-row:contains("${includeRow.searchFor}")`).parent();
                 const value: string = $(row).find(`div:nth-child(${i + 2})`).text();
-                let saveValue: number | null = value === '-' ? null : parseInt(value.replace(',', '')) * 1000;
+                let saveValue: number | null = value === '-' ? null : parseInt(value.replaceAll(',', '')) * 1000;
                 const saveAs = includeRow.saveAs;
                 data[saveAs] = saveValue;
             })
@@ -164,29 +161,50 @@ const getQuarterlyData = (quarterlyBalanceSheetHTML: string | undefined): quarte
     return financialData;
 }
 
-export const saveFinancialData = async (): Promise<void> => {
-    globalState.setFinanceState(STATE.DOING);
+export const saveFinancialData = async (stockName?: string): Promise<void | stockInterface> => {
 
     try {
-        const stocks = await getStocks();
+        let stocks: string[] = [];
+
+        if (stockName === undefined || stockName.length === 0) {
+            globalState.setFinanceState(STATE.DOING);
+            stocks = await getStocks();
+            console.log('csinalja')
+        } else {
+            stocks = [stockName];
+        }
 
         for (let stock of stocks) {
             const data = await getFinancialData(stock);
             if (data !== null) {
                 console.log(`${stock} financial data saved...`);
+
                 await saveStock({
                     name: stock,
-                    financialData: data
-                } as stockInterface)
+                    financialData: data,
+                    eligible: {
+                        annual: null,
+                        quarterly: null,
+                    }
+                } as stockInterface);
 
+                if (stockName !== undefined) return {
+                    name: stock,
+                    financialData: data,
+                    eligible: {
+                        annual: null,
+                        quarterly: null,
+                    }
+                };
             } else {
                 console.log(`Error fetching ${stock}, continuing...`)
             }
         }
+        if (stockName === undefined) {
+            await saveUpdateTime(fetchType.YAHOO, Date.now());
 
-        await saveUpdateTime(fetchType.YAHOO, Date.now());
-
-        globalState.setFinanceState(STATE.DONE);
+            globalState.setFinanceState(STATE.DONE);
+        }
         BROWSER?.close();
     } catch (error) {
         console.log('Financial save error', error);
