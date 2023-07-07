@@ -1,12 +1,13 @@
-import express, { Application, Request, Response } from "express";
+import express, { Application } from "express";
 import routes from './routes';
 import { client } from "./db";
+import 'dotenv/config';
 
 const app: Application = express();
 
 app.use('/', routes);
 
-const PORT = 3000;
+const PORT = process.env.APP_PORT || 3000;
 
 try {
     app.listen(PORT, (): void => {
