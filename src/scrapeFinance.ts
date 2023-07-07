@@ -117,7 +117,7 @@ const getAnnualData = (annualBalanceSheetHTML: string | undefined): annualDataIn
             financialData.push(data);
         });
     } catch (error) {
-        console.log(error);
+        console.log('Error while getting annual data from html:', error);
     }
 
     return financialData;
@@ -155,7 +155,8 @@ const getQuarterlyData = (quarterlyBalanceSheetHTML: string | undefined): quarte
             financialData.push(data);
         });
     } catch (error) {
-        console.log(error);
+        console.log('Error while getting quarterly data from html:', error);
+
     }
 
     return financialData;
@@ -169,7 +170,6 @@ export const saveFinancialData = async (stockName?: string): Promise<void | stoc
         if (stockName === undefined || stockName.length === 0) {
             globalState.setFinanceState(STATE.DOING);
             stocks = await getStocks();
-            console.log('csinalja')
         } else {
             stocks = [stockName];
         }

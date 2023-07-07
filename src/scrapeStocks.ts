@@ -82,7 +82,7 @@ export const saveFilteredStocks = async (): Promise<void> => {
 
         globalState.setStocksState(STATE.DONE);
     } catch (error) {
-        console.log(error);
+        console.log('Error while saving stocks from finviz:', error);
         globalState.setStocksState(STATE.ERROR);
     }
 } 
