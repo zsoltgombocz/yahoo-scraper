@@ -1,6 +1,5 @@
 import { createClient, RedisClientType } from 'redis';
 import 'dotenv/config';
-import { nonStockKeys } from './utils';
 
 export const client: RedisClientType = createClient({
     url: `redis://:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
@@ -31,17 +30,29 @@ export interface quarterlyDataInterface extends annualDataInterface {
 
 export interface stockInterface {
     name: string;
-    financialData: stockFinancialDataInterface | null
+    financialData: stockFinancialDataInterface | null,
+    eligible: {
+        annual: boolean | null,
+        quarterly: boolean | null,
+    }
+}
+
+export enum listType {
+    ANNUAL_OK = 'annual_ok', ANNUAL_OK_QUARTERLY_OK = 'annual_ok_quarterly_ok',
+    ANNUAL_OK_QUARTERLY_NO = 'annual_ok_quarterly_no', QUARTERLY_OK = 'quarterly_ok',
+    QUARTERLY_NO = 'quarterly_no',
 }
 
 export enum fetchType {
-    FINVIZ = 'finviz', YAHOO = 'yahoo'
+    FINVIZ = 'finviz', YAHOO = 'yahoo', ELIGIBLE = 'eligible'
 }
 
 export const getStocks = async (): Promise<string[]> => {
     try {
         const keys = await client.keys('*');
-        return keys.filter(key => !nonStockKeys.includes(key));
+        const stocks: string[] = keys.filter(key => !nonStockKeys.includes(key));
+
+        return stocks;
     } catch (error) {
         return [] as string[];
     }
@@ -50,7 +61,7 @@ export const getStocks = async (): Promise<string[]> => {
 export const getStock = async (stockName: string): Promise<stockInterface | null> => {
     try {
         const rawStock = await client.get(stockName);
-        if (rawStock === null) return null;
+        if (rawStock === null || rawStock === '{}') return null;
 
         const stockObject: stockInterface = JSON.parse(rawStock);
 
@@ -82,3 +93,26 @@ export const saveUpdateTime = async (fetchType: fetchType, updateTime: number): 
         return false;
     }
 }
+
+export const addStockToList = async (stockName: string, type: listType): Promise<void> => {
+    try {
+        let rawList: string | null = await client.get(type);
+        let list: string[] = rawList === null ? [] : JSON.parse(rawList);
+
+        list.push(stockName);
+
+        list = [...new Set(list)];
+
+        await client.set(type, JSON.stringify(list));
+    } catch (error) {
+        console.log(`Error while adding stock ${stockName} to list ${type}: ${error}`);
+    }
+}
+
+//When getting all stocks from Redis exclude these
+export const nonStockKeys = [
+    'finviz_last',
+    'yahoo_last',
+    'eligible_last',
+    ...[Object.values(listType)],
+];
