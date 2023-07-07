@@ -1,11 +1,15 @@
 import puppeteer, { Browser, Page } from "puppeteer";
+import 'dotenv/config';
 
 export let BROWSER: Browser | null = null;
 
 const getBrowser = (): Promise<Browser> => {
     return new Promise(async (resolve, reject) => {
         try {
-            BROWSER = await puppeteer.launch({ timeout: 60000 });
+            BROWSER = await puppeteer.launch({
+                timeout: 60000,
+                executablePath: process.env.ENV === 'production' ? '/usr/bin/chromium-browser' : undefined
+            });
 
             resolve(BROWSER);
         } catch (error) {
