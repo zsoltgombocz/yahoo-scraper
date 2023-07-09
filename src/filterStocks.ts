@@ -2,11 +2,11 @@ import { addStockToList, annualDataInterface, fetchType, getStock, getStocks, li
 import { STATE, globalState } from "./state";
 
 const checkFinancials = (
-    totalDebt: number | null, totalAssets: number | null, netTangibleAssets: number | null
+    totalAssets: number | null, totalLiabilities: number | null, totalEquity: number | null
 ): boolean => {
-    if (totalDebt === null || totalAssets === null || netTangibleAssets === null) return false;
+    if (totalAssets === null || totalLiabilities === null || totalEquity === null) return false;
 
-    return (totalDebt * 1.5) < totalAssets && (netTangibleAssets * 2) > totalDebt;
+    return (totalLiabilities * 1.5) < totalAssets && (totalEquity * 2.5) > totalLiabilities;
 }
 
 //Annaul or quarterly based eligibility
@@ -17,10 +17,10 @@ export const isEligible = async (stock: stockInterface): Promise<boolean | undef
         const quarterly: quarterlyDataInterface[] = stock.financialData.quarterly;
 
         const annualPass = annual.every(
-            (data: annualDataInterface) => checkFinancials(data.totalDebt, data.totalAssets, data.netTangibleAssets)
+            (data: annualDataInterface) => checkFinancials(data.totalAssets, data.totalLiabilities, data.totalEquity)
         );
 
-        const quarterlyPass = checkFinancials(quarterly[0].totalDebt, quarterly[0].totalAssets, quarterly[0].netTangibleAssets);
+        const quarterlyPass = checkFinancials(quarterly[0].totalAssets, quarterly[0].totalLiabilities, quarterly[0].totalEquity);
         await saveStock({ ...stock, eligible: { annual: annualPass, quarterly: quarterlyPass } });
     } catch (error) {
         console.log('Error while checking stock financial:', error);

@@ -107,16 +107,13 @@ router.get('/list', async (req: Request, res: Response): Promise<any> => {
     tabs.forEach(tab => {
         const worksheet = workbook.addWorksheet(tab.name);
 
-        // Add the array values to a single column
         tab.data.forEach((value: string) => {
             worksheet.addRow([value]);
         });
     });
 
-    // Create a stream for the workbook
     const stream = new MemoryStream();
 
-    // Set response headers for file download
     res.setHeader(
         'Content-Type',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

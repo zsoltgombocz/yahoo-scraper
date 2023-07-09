@@ -11,8 +11,8 @@ interface rawHTMLs {
 
 const includeRows = [
     { searchFor: 'Total Assets', saveAs: 'totalAssets' },
-    { searchFor: 'Net Tangible Assets', saveAs: 'netTangibleAssets' },
-    { searchFor: 'Total Debt', saveAs: 'totalDebt' },
+    { searchFor: 'Total Liabilities Net Minority Interest', saveAs: 'totalLiabilities' },
+    { searchFor: 'Total Equity Gross Minority Interest', saveAs: 'totalEquity' },
 ];
 
 const getBalanceSheetURL = (stock: string): string => {
@@ -102,8 +102,8 @@ const getAnnualData = (annualBalanceSheetHTML: string | undefined): annualDataIn
             let data: annualDataInterface = {
                 year: parseInt($(div).text().split('/')[2]),
                 totalAssets: null,
-                totalDebt: null,
-                netTangibleAssets: null,
+                totalEquity: null,
+                totalLiabilities: null,
             };
 
             includeRows.map(includeRow => {
@@ -140,8 +140,8 @@ const getQuarterlyData = (quarterlyBalanceSheetHTML: string | undefined): quarte
                 year: parseInt($(div).text().split('/')[2]),
                 quarter: Math.floor(parseInt($(div).text().split('/')[0]) / 3),
                 totalAssets: null,
-                totalDebt: null,
-                netTangibleAssets: null,
+                totalLiabilities: null,
+                totalEquity: null,
             };
 
             includeRows.map(includeRow => {

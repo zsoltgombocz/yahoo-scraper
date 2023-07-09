@@ -19,8 +19,8 @@ export interface stockFinancialDataInterface {
 export interface annualDataInterface {
     year: number;
     totalAssets: number | null;
-    totalDebt: number | null;
-    netTangibleAssets: number | null;
+    totalLiabilities: number | null;
+    totalEquity: number | null;
     [key: string]: number | null;
 }
 
