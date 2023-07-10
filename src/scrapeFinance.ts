@@ -147,7 +147,7 @@ const getQuarterlyData = (quarterlyBalanceSheetHTML: string | undefined): quarte
             includeRows.map(includeRow => {
                 const row = $(`.fi-row:contains("${includeRow.searchFor}")`).parent();
                 const value: string = $(row).find(`div:nth-child(${i + 2})`).text();
-                let saveValue: number | null = value === '-' ? null : parseInt(value.replace(',', '')) * 1000;
+                let saveValue: number | null = value === '-' ? null : parseInt(value.replaceAll(',', '')) * 1000;
                 const saveAs = includeRow.saveAs;
                 data[saveAs] = saveValue;
             })
