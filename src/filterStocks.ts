@@ -1,4 +1,4 @@
-import { addStockToList, annualDataInterface, fetchType, getStock, getStocks, listType, quarterlyDataInterface, saveStock, saveUpdateTime, stockInterface } from "./db"
+import { addStockToList, annualDataInterface, fetchType, getStock, getStockNames, getStocks, listType, quarterlyDataInterface, saveStock, saveUpdateTime, stockInterface } from "./db"
 import { STATE, globalState } from "./state";
 
 const checkFinancials = (
@@ -31,7 +31,7 @@ export const checkStocks = async () => {
     globalState.setEligibleState(STATE.DOING);
     let stocksWithData: stockInterface[] = [];
     try {
-        const stocks = await getStocks();
+        const stocks = await getStockNames();
 
         for (let stock of stocks) {
             const stockData: stockInterface | null = await getStock(stock);

@@ -1,7 +1,7 @@
 import { BROWSER, getPage } from './browser';
 import { load } from "cheerio";
 import { STATE, globalState } from './state';
-import { annualDataInterface, fetchType, getStocks, quarterlyDataInterface, saveStock, saveUpdateTime, stockFinancialDataInterface, stockInterface } from './db';
+import { annualDataInterface, fetchType, getStockNames, getStocks, quarterlyDataInterface, saveStock, saveUpdateTime, stockFinancialDataInterface, stockInterface } from './db';
 import { Page } from 'puppeteer';
 
 interface rawHTMLs {
@@ -169,7 +169,7 @@ export const saveFinancialData = async (stockName?: string): Promise<void | stoc
 
         if (stockName === undefined || stockName.length === 0) {
             globalState.setFinanceState(STATE.DOING);
-            stocks = await getStocks();
+            stocks = await getStockNames();
         } else {
             stocks = [stockName];
         }

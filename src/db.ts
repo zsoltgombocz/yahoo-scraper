@@ -1,6 +1,8 @@
 import { createClient, RedisClientType } from 'redis';
 import 'dotenv/config';
 
+export let STOCK_LIST: stockInterface[] = [];
+
 export const client: RedisClientType = createClient({
     url: `redis://:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
 
@@ -48,7 +50,7 @@ export enum fetchType {
     FINVIZ = 'finviz', YAHOO = 'yahoo', ELIGIBLE = 'eligible'
 }
 
-export const getStocks = async (): Promise<string[]> => {
+export const getStockNames = async (): Promise<string[]> => {
     try {
         const keys = await client.keys('*');
         const stocks: string[] = keys.filter(key => !nonStockKeys.includes(key));
@@ -56,6 +58,31 @@ export const getStocks = async (): Promise<string[]> => {
         return stocks;
     } catch (error) {
         return [] as string[];
+    }
+}
+
+export const getStocks = async (): Promise<stockInterface[]> => {
+    try {
+        const stocks: string[] = await getStockNames();
+        const stockList: stockInterface[] = [];
+
+        if (STOCK_LIST.length > 0) {
+            return STOCK_LIST;
+        } else {
+            for (let stock of stocks) {
+                const stockData = await getStock(stock);
+
+                if (stockData !== null) {
+                    stockList.push(stockData);
+                }
+
+            }
+            STOCK_LIST = stockList;
+            return stockList;
+        }
+    } catch (error) {
+        console.log('Error while getting stock list: ', error);
+        return [] as stockInterface[];
     }
 }
 
@@ -108,10 +135,22 @@ export const addStockToList = async (stockName: string, type: listType[]): Promi
     }
 }
 
+export const getStocksFromList = async (listName: string): Promise<string[]> => {
+    try {
+        let stocks: stockInterface[] = await getStocks();
+        const filteredStocks = stocks.filter(stock => stock.list?.includes(listName));
+
+        return filteredStocks.map(stock => stock.name);
+    } catch (error) {
+        console.log(`Error while getting list ${listName}: ${error}`);
+        return [];
+    }
+}
+
 //When getting all stocks from Redis exclude these
 export const nonStockKeys = [
     'finviz_last',
     'yahoo_last',
     'eligible_last',
-    ...[Object.values(listType)],
+    ...Object.values(listType),
 ];
