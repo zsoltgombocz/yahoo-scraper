@@ -34,7 +34,8 @@ export interface stockInterface {
     eligible: {
         annual: boolean | null,
         quarterly: boolean | null,
-    }
+    },
+    list: string[]
 }
 
 export enum listType {
@@ -94,18 +95,16 @@ export const saveUpdateTime = async (fetchType: fetchType, updateTime: number): 
     }
 }
 
-export const addStockToList = async (stockName: string, type: listType): Promise<void> => {
+export const addStockToList = async (stockName: string, type: listType[]): Promise<void> => {
     try {
-        let rawList: string | null = await client.get(type);
-        let list: string[] = rawList === null ? [] : JSON.parse(rawList);
+        let stock: stockInterface | null = await getStock(stockName);
+        if (stock === null) return console.log(`Adding stock to list error, stock ${stockName} not found!`);
 
-        list.push(stockName);
+        stock.list = type;
 
-        list = [...new Set(list)];
-
-        await client.set(type, JSON.stringify(list));
+        await client.set(stockName, JSON.stringify(stock));
     } catch (error) {
-        console.log(`Error while adding stock ${stockName} to list ${type}: ${error}`);
+        console.log(`Error while adding list ${type} to ${stockName}: ${error}`);
     }
 }
 

@@ -194,7 +194,8 @@ export const saveFinancialData = async (stockName?: string): Promise<void | stoc
                     eligible: {
                         annual: null,
                         quarterly: null,
-                    }
+                    },
+                    list: [],
                 };
             } else {
                 console.log(`Error fetching ${stock}, continuing...`)

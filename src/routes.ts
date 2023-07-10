@@ -1,6 +1,6 @@
 import express, { Response, Request, Router } from "express";
 import { STATE, globalState } from "./state";
-import { client, fetchType, getStock, listType } from "./db";
+import { addStockToList, client, fetchType, getStock, listType } from "./db";
 import { saveFilteredStocks } from "./scrapeStocks";
 import { saveFinancialData } from "./scrapeFinance";
 import { checkStocks, getTypesBasedOnEligibility, isEligible } from "./filterStocks";
@@ -79,11 +79,11 @@ router.get('/fetch/:stock', async (req: Request, res: Response): Promise<Respons
 
 router.get('/check/:stock', async (req: Request, res: Response): Promise<Response> => {
     const stockInfo = await getStock(req.params.stock);
-    const eligible = stockInfo?.eligible;
-    const types =
-        stockInfo?.financialData !== null
-            ? getTypesBasedOnEligibility(eligible?.annual || null, eligible?.quarterly || null)
-            : null;
+    if (stockInfo === null) return res.status(200).send(`Nincs adat erről a cégről.`);
+
+    const eligible = stockInfo.eligible;
+    const types = getTypesBasedOnEligibility(eligible.annual, eligible.quarterly);
+    await addStockToList(stockInfo.name, types)
 
     return res.status(200).send(`${types}`);
 })

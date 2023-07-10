@@ -39,7 +39,8 @@ export const checkStocks = async () => {
 
             stocksWithData.push(stockData);
             await isEligible(stockData);
-            console.log(`Eligibility checked on stock: ${stock}. [${stocks.indexOf(stock)}/${stocks.length}]`);
+            if (stockData.name === 'GNTX')
+                console.log(`Eligibility checked on stock: ${stock}. [${stocks.indexOf(stock)}/${stocks.length}]`);
 
             await sortStock(stockData);
         }
@@ -54,19 +55,18 @@ export const checkStocks = async () => {
 
 const sortStock = async (stock: stockInterface) => {
     try {
-        const listTypes = getTypesBasedOnEligibility(stock.eligible.annual, stock.eligible.quarterly);
+        const listTypes = getTypesBasedOnEligibility(stock.eligible.annual, stock.eligible.quarterly, stock.name === 'GNTX');
 
-        for (let type of listTypes) {
-            await addStockToList(stock.name, type);
-            console.log(`Stock ${stock.name} added to list: ${type}.`);
-        }
+        await addStockToList(stock.name, listTypes);
     } catch (error) {
         console.log('Error while sorting stock:', error);
     }
 }
 
-export const getTypesBasedOnEligibility = (annual: boolean | null, quarterly: boolean | null): listType[] => {
+export const getTypesBasedOnEligibility = (annual: boolean | null, quarterly: boolean | null, log: boolean = false): listType[] => {
     let types: listType[] = [];
+    if (log) console.debug(annual, quarterly);
+
 
     if (annual === null || quarterly === null) return types;
 
