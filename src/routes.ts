@@ -125,6 +125,7 @@ router.get('/list', async (req: Request, res: Response): Promise<any> => {
     });
 
     const stream = new MemoryStream();
+    const now = new Date().toLocaleDateString();
 
     res.setHeader(
         'Content-Type',
@@ -132,7 +133,7 @@ router.get('/list', async (req: Request, res: Response): Promise<any> => {
     );
     res.setHeader(
         'Content-Disposition',
-        'attachment; filename=' + 'data.xlsx'
+        'attachment; filename=' + `${now}.xlsx`
     );
 
     workbook.xlsx.write(stream).then(() => {
