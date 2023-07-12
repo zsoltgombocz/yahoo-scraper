@@ -39,8 +39,8 @@ export const checkStocks = async () => {
 
             stocksWithData.push(stockData);
             await isEligible(stockData);
-            if (stockData.name === 'GNTX')
-                console.log(`Eligibility checked on stock: ${stock}. [${stocks.indexOf(stock)}/${stocks.length}]`);
+
+            console.log(`Eligibility checked on stock: ${stock}. [${stocks.indexOf(stock)}/${stocks.length}]`);
 
             await sortStock(stockData);
         }
