@@ -30,6 +30,13 @@ export interface quarterlyDataInterface extends annualDataInterface {
     quarter: number;
 }
 
+export interface incomeDatainterface {
+    year: number;
+    totalRevenue: number | null;
+    NICS: number | null;
+    [key: string]: number | null;
+}
+
 export interface stockInterface {
     name: string;
     financialData: stockFinancialDataInterface | null,
@@ -37,7 +44,10 @@ export interface stockInterface {
         annual: boolean | null,
         quarterly: boolean | null,
     },
-    list: string[]
+    list: string[],
+    incomeData: incomeDatainterface[],
+    incomePercent: number | null,
+
 }
 
 export enum listType {
@@ -67,6 +77,7 @@ export const getStocks = async (): Promise<stockInterface[]> => {
         const stockList: stockInterface[] = [];
 
         if (STOCK_LIST.length > 0) {
+            console.log('Giving back stocks from memory!');
             return STOCK_LIST;
         } else {
             for (let stock of stocks) {
@@ -137,15 +148,30 @@ export const addStockToList = async (stockName: string, type: listType[]): Promi
     }
 }
 
-export const getStocksFromList = async (listName: string): Promise<string[]> => {
+export const getStocksFromList = async (listName: string): Promise<stockInterface[]> => {
     try {
         let stocks: stockInterface[] = await getStocks();
         const filteredStocks = stocks.filter(stock => stock.list?.includes(listName));
 
-        return filteredStocks.map(stock => stock.name);
+        return filteredStocks;
     } catch (error) {
         console.log(`Error while getting list ${listName}: ${error}`);
         return [];
+    }
+}
+
+export const saveIncomePercentage = async (stockName: string, percentage: number | null): Promise<void> => {
+    try {
+        let stock: stockInterface | null = await getStock(stockName);
+        if (stock === null) return console.log(`Saving percentage error, stock ${stockName} not found!`);
+
+        stock.incomePercent = percentage;
+
+        await client.set(stockName, JSON.stringify(stock));
+
+        console.log(`Stock ${stockName} updated with income percentage ${percentage}!`);
+    } catch (error) {
+        console.log(`Error while updating stock ${stockName} with percentage: ${error}`);
     }
 }
 
