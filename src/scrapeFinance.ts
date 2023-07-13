@@ -1,8 +1,9 @@
 import { BROWSER, getPage } from './browser';
 import { load } from "cheerio";
 import { STATE, globalState } from './state';
-import { annualDataInterface, fetchType, getStockNames, getStocks, quarterlyDataInterface, saveStock, saveUpdateTime, stockFinancialDataInterface, stockInterface } from './db';
+import { annualDataInterface, fetchType, getStockNames, getStocks, incomeDatainterface, quarterlyDataInterface, saveStock, saveUpdateTime, stockFinancialDataInterface, stockInterface } from './db';
 import { Page } from 'puppeteer';
+import { raw } from 'express';
 
 interface rawHTMLs {
     annual: string | undefined;
@@ -13,10 +14,16 @@ const includeRows = [
     { searchFor: 'Total Assets', saveAs: 'totalAssets' },
     { searchFor: 'Total Liabilities Net Minority Interest', saveAs: 'totalLiabilities' },
     { searchFor: 'Total Equity Gross Minority Interest', saveAs: 'totalEquity' },
+    { searchFor: 'Total Revenue', saveAs: 'totalRevenue' },
+    { searchFor: 'Net Income Common Stockholders', saveAs: 'NICS' },
 ];
 
 const getBalanceSheetURL = (stock: string): string => {
     return `${process.env.YAHOO_FINANCE_URL}/${stock}/balance-sheet?p=${stock}`;
+}
+
+const getIncomeURL = (stock: string): string => {
+    return `${process.env.YAHOO_FINANCE_URL}/${stock}/financials?p=${stock}`;
 }
 
 const acceptCookie = (page: Page) => {
@@ -41,7 +48,7 @@ const getRawFinancialHTMLs = (stock: string): Promise<rawHTMLs> => {
         try {
             page = await getPage(yahooURL);
 
-            const cookie = await acceptCookie(page);
+            await acceptCookie(page);
 
             await page.setViewport({ width: 1080, height: 1024 });
 
@@ -49,9 +56,12 @@ const getRawFinancialHTMLs = (stock: string): Promise<rawHTMLs> => {
             const balanceSheetAnnualHTML: string = await page.$eval('#Main div:nth-child(2) > div', element => element.innerHTML);
 
             await page.waitForSelector('#Main .IbBox:nth-child(2) > button', { timeout: 5000 });
+
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
             await page.click('#Main .IbBox:nth-child(2) > button');
 
-            await page.waitForTimeout(2000);
+            await new Promise(resolve => setTimeout(resolve, 5000));
 
             const balanceSheetQuarterlyHTML: string = await page.$eval('#Main div:nth-child(2) > div', element => element.innerHTML);
             await page.close();
@@ -60,6 +70,35 @@ const getRawFinancialHTMLs = (stock: string): Promise<rawHTMLs> => {
                 annual: balanceSheetAnnualHTML,
                 quarterly: balanceSheetQuarterlyHTML,
             } as rawHTMLs);
+
+        } catch (error) {
+            await page?.close();
+            console.log('HTML fetch error: ' + error)
+            reject(null);
+        }
+    });
+}
+
+const getRawIncomeHTML = (stock: string): Promise<string | null> => {
+    const yahooURL = getIncomeURL(stock);
+
+    return new Promise(async (resolve, reject) => {
+        let page: Page | undefined;
+        try {
+            page = await getPage(yahooURL);
+
+            await acceptCookie(page);
+
+            await page.setViewport({ width: 1080, height: 1024 });
+
+            await page.waitForSelector('#Main');
+            const incomeSheetHTML: string = await page.$eval('#Main div:nth-child(2) > div', element => element.innerHTML);
+
+            await page.waitForTimeout(2000);
+
+            await page.close();
+
+            resolve(incomeSheetHTML);
 
         } catch (error) {
             await page?.close();
@@ -89,6 +128,48 @@ const getFinancialData = (stock: string): Promise<stockFinancialDataInterface | 
     });
 }
 
+const getIncomeData = (stock: string): Promise<incomeDatainterface[] | null> => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const rawHTML: string | null = await getRawIncomeHTML(stock);
+
+            let incomeData: incomeDatainterface[] = [];
+
+            if (rawHTML === null || rawHTML.length === 0) return incomeData;
+
+            const $ = load(rawHTML);
+
+            const tableHeader = $('.D\\(tbhg\\) > .D\\(tbr\\) > div:not(:first-child)');
+
+            tableHeader.each((i, div) => {
+                const headerText = $(div).text();
+
+                let data: incomeDatainterface = {
+                    year: headerText === 'ttm' ? 0 : parseInt(headerText.split('/')[2]),
+                    totalRevenue: null,
+                    NICS: null,
+                };
+
+                includeRows.map(includeRow => {
+                    const row = $(`.fi-row:contains("${includeRow.searchFor}")`).parent();
+                    if (row.html() !== null) {
+                        const value: string = $(row).find(`div:nth-child(${i + 2})`).text();
+                        let saveValue: number | null = value === '-' ? null : parseInt(value.replaceAll(',', ''));
+                        const saveAs = includeRow.saveAs;
+                        data[saveAs] = saveValue;
+                    }
+                })
+
+                incomeData.push(data);
+            });
+
+            resolve(incomeData);
+        } catch (error) {
+            resolve(null);
+        }
+    });
+}
+
 const getAnnualData = (annualBalanceSheetHTML: string | undefined): annualDataInterface[] => {
 
     let financialData: annualDataInterface[] = [];
@@ -108,10 +189,12 @@ const getAnnualData = (annualBalanceSheetHTML: string | undefined): annualDataIn
 
             includeRows.map(includeRow => {
                 const row = $(`.fi-row:contains("${includeRow.searchFor}")`).parent();
-                const value: string = $(row).find(`div:nth-child(${i + 2})`).text();
-                let saveValue: number | null = value === '-' ? null : parseInt(value.replaceAll(',', '')) * 1000;
-                const saveAs = includeRow.saveAs;
-                data[saveAs] = saveValue;
+                if (row.html() !== null) {
+                    const value: string = $(row).find(`div:nth-child(${i + 2})`).text();
+                    let saveValue: number | null = value === '-' ? null : parseInt(value.replaceAll(',', ''));
+                    const saveAs = includeRow.saveAs;
+                    data[saveAs] = saveValue;
+                }
             })
 
             financialData.push(data);
@@ -135,10 +218,10 @@ const getQuarterlyData = (quarterlyBalanceSheetHTML: string | undefined): quarte
 
 
         tableHeader.each((i, div) => {
-
+            const quarterRaw = parseInt($(div).text().split('/')[0]);
             let data: quarterlyDataInterface = {
                 year: parseInt($(div).text().split('/')[2]),
-                quarter: Math.floor(parseInt($(div).text().split('/')[0]) / 3),
+                quarter: quarterRaw < 3 ? 1 : Math.ceil(quarterRaw / 3),
                 totalAssets: null,
                 totalLiabilities: null,
                 totalEquity: null,
@@ -146,17 +229,18 @@ const getQuarterlyData = (quarterlyBalanceSheetHTML: string | undefined): quarte
 
             includeRows.map(includeRow => {
                 const row = $(`.fi-row:contains("${includeRow.searchFor}")`).parent();
-                const value: string = $(row).find(`div:nth-child(${i + 2})`).text();
-                let saveValue: number | null = value === '-' ? null : parseInt(value.replaceAll(',', '')) * 1000;
-                const saveAs = includeRow.saveAs;
-                data[saveAs] = saveValue;
+                if (row.html() !== null) {
+                    const value: string = $(row).find(`div:nth-child(${i + 2})`).text();
+                    let saveValue: number | null = value === '-' ? null : parseInt(value.replaceAll(',', ''));
+                    const saveAs = includeRow.saveAs;
+                    data[saveAs] = saveValue;
+                }
             })
 
             financialData.push(data);
         });
     } catch (error) {
         console.log('Error while getting quarterly data from html:', error);
-
     }
 
     return financialData;
@@ -176,19 +260,12 @@ export const saveFinancialData = async (stockName?: string): Promise<void | stoc
 
         for (let stock of stocks) {
             const data = await getFinancialData(stock);
-            if (data !== null) {
+            const incomeData = await getIncomeData(stock);
+
+            if (data !== null && incomeData !== null) {
                 console.log(`${stock} financial data saved...`);
 
-                await saveStock({
-                    name: stock,
-                    financialData: data,
-                    eligible: {
-                        annual: null,
-                        quarterly: null,
-                    }
-                } as stockInterface);
-
-                if (stockName !== undefined) return {
+                const stockObject: stockInterface = {
                     name: stock,
                     financialData: data,
                     eligible: {
@@ -196,7 +273,13 @@ export const saveFinancialData = async (stockName?: string): Promise<void | stoc
                         quarterly: null,
                     },
                     list: [],
+                    incomeData,
+                    incomePercent: null,
                 };
+
+                await saveStock(stockObject);
+
+                if (stockName !== undefined) return stockObject;
             } else {
                 console.log(`Error fetching ${stock}, continuing...`)
             }
