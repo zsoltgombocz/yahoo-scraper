@@ -1,4 +1,4 @@
-import { addStockToList, annualDataInterface, fetchType, getStock, getStockNames, getStocks, listType, quarterlyDataInterface, saveStock, saveUpdateTime, stockInterface } from "./db"
+import { addStockToList, annualDataInterface, fetchType, getStock, getStockNames, getStocks, incomeDatainterface, listType, quarterlyDataInterface, saveIncomePercentage, saveStock, saveUpdateTime, stockInterface } from "./db"
 import { STATE, globalState } from "./state";
 
 const checkFinancials = (
@@ -13,6 +13,7 @@ const checkFinancials = (
 export const isEligible = async (stock: stockInterface): Promise<boolean | undefined> => {
     try {
         if (stock.financialData === null) return undefined;
+
         const annual: annualDataInterface[] = stock.financialData.annual;
         const quarterly: quarterlyDataInterface[] = stock.financialData.quarterly;
 
@@ -27,6 +28,25 @@ export const isEligible = async (stock: stockInterface): Promise<boolean | undef
     }
 }
 
+export const getIncomePercentage = (stock: stockInterface): number | null => {
+    if (stock.incomeData === null || stock.incomeData.length === 0) return null;
+
+    const percentages = stock.incomeData.map(
+        (incomeData: incomeDatainterface) => {
+            if (incomeData.NICS === null || incomeData.totalRevenue === null) return null;
+
+            return (incomeData.NICS / incomeData.totalRevenue) * 100
+        }
+    );
+
+    const percAvg: number = percentages.reduce(
+        (accumulator: number, percentage: number | null) => accumulator + (percentage || 0),
+        0
+    );
+
+    return percAvg / percentages.filter(perc => perc !== null).length;
+}
+
 export const checkStocks = async () => {
     globalState.setEligibleState(STATE.DOING);
     let stocksWithData: stockInterface[] = [];
@@ -39,6 +59,8 @@ export const checkStocks = async () => {
 
             stocksWithData.push(stockData);
             await isEligible(stockData);
+            const percentage = await getIncomePercentage(stockData);
+            await saveIncomePercentage(stockData.name, percentage);
 
             console.log(`Eligibility checked on stock: ${stock}. [${stocks.indexOf(stock)}/${stocks.length}]`);
 
