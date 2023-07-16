@@ -39,6 +39,7 @@ export interface incomeDatainterface {
 
 export interface stockInterface {
     name: string;
+    sector?: string,
     financialData: stockFinancialDataInterface | null,
     eligible: {
         annual: boolean | null,
@@ -80,6 +81,7 @@ export const getStocks = async (): Promise<stockInterface[]> => {
             console.log('Giving back stocks from memory!');
             return STOCK_LIST;
         } else {
+            console.log('Getting stock for the first time... takes 300 sec');
             for (let stock of stocks) {
                 const stockData = await getStock(stock);
 
@@ -111,14 +113,46 @@ export const getStock = async (stockName: string): Promise<stockInterface | null
     }
 }
 
-export const saveStock = async (stock: stockInterface): Promise<stockInterface | null> => {
-    if (stock.name === undefined || stock.name === '') return null;
-
+const saveStock = async (stock: stockInterface): Promise<void> => {
     try {
         await client.set(stock.name, JSON.stringify(stock));
-        return stock;
     } catch (error) {
         console.log(`Error while saving stock ${stock.name}: ${error}`);
+    }
+}
+
+export const updateStock = async (name: string, data: Partial<stockInterface>): Promise<stockInterface | null> => {
+    if (name === undefined || name === '') return null;
+
+    try {
+        const exist = await getStock(name);
+
+        if (exist === null) {
+            const newStock = {
+                name: name,
+                financialData: null,
+                eligible: {
+                    annual: null,
+                    quarterly: null,
+                },
+                list: [],
+                incomeData: [],
+                incomePercent: null,
+            };
+
+            await saveStock(newStock);
+            return newStock;
+        } else {
+            const updated: stockInterface = {
+                ...exist,
+                ...data
+            }
+
+            await saveStock(updated);
+            return updated;
+        }
+    } catch (error) {
+        console.log(`Error while updating stock ${name}: ${error}`);
         return null;
     }
 }
@@ -165,9 +199,7 @@ export const saveIncomePercentage = async (stockName: string, percentage: number
         let stock: stockInterface | null = await getStock(stockName);
         if (stock === null) return console.log(`Saving percentage error, stock ${stockName} not found!`);
 
-        stock.incomePercent = percentage;
-
-        await client.set(stockName, JSON.stringify(stock));
+        await updateStock(stockName, { incomePercent: percentage });
 
         console.log(`Stock ${stockName} updated with income percentage ${percentage}!`);
     } catch (error) {
