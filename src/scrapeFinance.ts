@@ -1,9 +1,8 @@
 import { BROWSER, getPage } from './browser';
 import { load } from "cheerio";
 import { STATE, globalState } from './state';
-import { annualDataInterface, fetchType, getStockNames, getStocks, incomeDatainterface, quarterlyDataInterface, saveStock, saveUpdateTime, stockFinancialDataInterface, stockInterface } from './db';
+import { annualDataInterface, fetchType, getStockNames, incomeDatainterface, quarterlyDataInterface, saveUpdateTime, stockFinancialDataInterface, stockInterface, updateStock } from './db';
 import { Page } from 'puppeteer';
-import { raw } from 'express';
 
 interface rawHTMLs {
     annual: string | undefined;
@@ -277,7 +276,7 @@ export const saveFinancialData = async (stockName?: string): Promise<void | stoc
                     incomePercent: null,
                 };
 
-                await saveStock(stockObject);
+                await updateStock(stock, stockObject);
 
                 if (stockName !== undefined) return stockObject;
             } else {
