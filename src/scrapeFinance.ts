@@ -56,11 +56,11 @@ const getRawFinancialHTMLs = (stock: string): Promise<rawHTMLs> => {
 
             await page.waitForSelector('#Main .IbBox:nth-child(2) > button', { timeout: 5000 });
 
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 2500));
 
             await page.click('#Main .IbBox:nth-child(2) > button');
 
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 2500));
 
             const balanceSheetQuarterlyHTML: string = await page.$eval('#Main div:nth-child(2) > div', element => element.innerHTML);
             await page.close();
