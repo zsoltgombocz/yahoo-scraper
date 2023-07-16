@@ -1,9 +1,13 @@
 import { load } from "cheerio";
 import { STATE, globalState } from "./state";
-import { client, fetchType, saveStock, saveUpdateTime, stockInterface } from './db';
+import { fetchType, saveUpdateTime, updateStock } from './db';
 
+interface scrapedStockInterface {
+    name: string;
+    sector: string;
+}
 interface screenerPageInterface {
-    stocks: string[];
+    stocks: scrapedStockInterface[];
     lastPage: number;
 }
 
@@ -12,7 +16,7 @@ const sleep = async (time: number): Promise<void> => {
 }
 
 const scrapePage = async (pageUrl: string): Promise<screenerPageInterface> => {
-    let stockNames: string[] = [];
+    let stocks: scrapedStockInterface[] = [];
     let lastPage: number = 0;
 
     try {
@@ -20,9 +24,15 @@ const scrapePage = async (pageUrl: string): Promise<screenerPageInterface> => {
         const body = await page.text();
         const $ = load(body);
 
-        const stockNameElements = $("a.screener-link-primary");
-        stockNameElements.each((i, div) => {
-            stockNames.push($(div).text());
+        const rows = $("#screener-views-table tr:nth-child(5) table tr:not(first-child)");
+
+        rows.each((_, div) => {
+            const stockName = $(div).find('td:nth-child(2)');
+            const stockSector = $(div).find('td:nth-child(4)');
+            stocks.push({
+                name: stockName.text(),
+                sector: stockSector.text(),
+            })
         });
 
         const lastPageElement = $('.screener_pagination > .screener-pages').last();
@@ -32,15 +42,15 @@ const scrapePage = async (pageUrl: string): Promise<screenerPageInterface> => {
     }
 
     return {
-        stocks: stockNames,
+        stocks: stocks,
         lastPage
     };
 }
 
-const getAllStocks = (baseURL: string | undefined): Promise<string[]> => {
+const getAllStocks = (baseURL: string | undefined): Promise<scrapedStockInterface[]> => {
     let currentCount = 1;
 
-    let allStocks: string[] = [];
+    let allStocks: scrapedStockInterface[] = [];
 
     return new Promise(async (resolve, reject) => {
         if (baseURL === undefined) reject([]);
@@ -66,16 +76,18 @@ export const saveFilteredStocks = async (): Promise<void> => {
 
     try {
         const allStocks = await getAllStocks(process.env.FINVIZ_BASE_URL);
-        const financialStocks = await getAllStocks(process.env.FINVIZ_EXCLUDE_URL);
+        let financialStocks: string[] = [];
 
-        const filteredStocks = allStocks.filter(stock => !financialStocks.includes(stock));
+        getAllStocks(process.env.FINVIZ_EXCLUDE_URL).then(stocks => {
+            financialStocks = stocks.map(stocks => stocks.name);
+        });
+
+        const filteredStocks = allStocks.filter(stock => !financialStocks.includes(stock.name));
 
         filteredStocks.forEach(async stock => {
-            await saveStock({
-                name: stock,
-                financialData: null
-            } as stockInterface);
-            await client.set(stock, JSON.stringify({}));
+            await updateStock(stock.name, {
+                sector: stock.sector,
+            });
         });
 
         await saveUpdateTime(fetchType.FINVIZ, Date.now());
