@@ -1,4 +1,4 @@
-import { addStockToList, annualDataInterface, fetchType, getStock, getStockNames, getStocks, incomeDatainterface, listType, quarterlyDataInterface, saveIncomePercentage, saveStock, saveUpdateTime, stockInterface } from "./db"
+import { addStockToList, annualDataInterface, fetchType, getStocks, incomeDatainterface, listType, quarterlyDataInterface, saveIncomePercentage, saveUpdateTime, stockInterface, updateStock } from "./db"
 import { STATE, globalState } from "./state";
 
 const checkFinancials = (
@@ -22,7 +22,7 @@ export const isEligible = async (stock: stockInterface): Promise<boolean | undef
         );
 
         const quarterlyPass = checkFinancials(quarterly[0].totalAssets, quarterly[0].totalLiabilities, quarterly[0].totalEquity);
-        await saveStock({ ...stock, eligible: { annual: annualPass, quarterly: quarterlyPass } });
+        await updateStock(stock.name, { ...stock, eligible: { annual: annualPass, quarterly: quarterlyPass } });
     } catch (error) {
         console.log('Error while checking stock financial:', error);
     }
@@ -49,22 +49,19 @@ export const getIncomePercentage = (stock: stockInterface): number | null => {
 
 export const checkStocks = async () => {
     globalState.setEligibleState(STATE.DOING);
-    let stocksWithData: stockInterface[] = [];
     try {
-        const stocks = await getStockNames();
+        const stocks = await getStocks();
 
         for (let stock of stocks) {
-            const stockData: stockInterface | null = await getStock(stock);
-            if (stockData === null) continue;
+            if (stock === null) continue;
 
-            stocksWithData.push(stockData);
-            await isEligible(stockData);
-            const percentage = await getIncomePercentage(stockData);
-            await saveIncomePercentage(stockData.name, percentage);
+            await isEligible(stock);
+            const percentage = await getIncomePercentage(stock);
+            await saveIncomePercentage(stock.name, percentage);
 
-            console.log(`Eligibility checked on stock: ${stock}. [${stocks.indexOf(stock)}/${stocks.length}]`);
+            console.log(`Eligibility checked on stock: ${stock.name}. [${stocks.indexOf(stock)}/${stocks.length}]`);
 
-            await sortStock(stockData);
+            await sortStock(stock);
         }
 
         await saveUpdateTime(fetchType.ELIGIBLE, Date.now());
