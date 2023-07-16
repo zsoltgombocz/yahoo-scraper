@@ -34,7 +34,7 @@ router.get('/status', async (req: Request, res: Response): Promise<Response> => 
     });
 })
 
-router.get('/fetch/stock', async (req: Request, res: Response): Promise<Response> => {
+router.get('/fetch', async (req: Request, res: Response): Promise<Response> => {
     if (globalState.stock !== STATE.DOING) {
         saveFilteredStocks();
     }
@@ -42,7 +42,7 @@ router.get('/fetch/stock', async (req: Request, res: Response): Promise<Response
     return res.status(200).send(`${globalState.stock}. A "/status" oldalon lehet látni az állapotot.`);
 })
 
-router.get('/fetch/finance', async (req: Request, res: Response): Promise<Response> => {
+router.get('/finance', async (req: Request, res: Response): Promise<Response> => {
     if (globalState.finance !== STATE.DOING) {
         saveFinancialData();
     }
@@ -77,7 +77,7 @@ router.get('/check', async (req: Request, res: Response): Promise<Response> => {
     return res.status(200).send(`${globalState.eligible}. A "/status" oldalon lehet látni az állapotot.`);
 })
 
-router.get('/fetch/:stock', async (req: Request, res: Response): Promise<Response> => {
+router.get('/finance/:stock', async (req: Request, res: Response): Promise<Response> => {
     const data = await saveFinancialData(req.params.stock);
 
     return res.status(200).send(data);
