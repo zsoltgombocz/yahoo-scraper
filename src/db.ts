@@ -48,6 +48,7 @@ export interface stockInterface {
     list: string[],
     incomeData: incomeDatainterface[],
     incomePercent: number | null,
+    incomePercentages?: number[]
 
 }
 
