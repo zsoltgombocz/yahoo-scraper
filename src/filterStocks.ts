@@ -64,12 +64,7 @@ export const getIncomePercentage = (stock: stockInterface): { percentage: number
 export const checkStocks = async () => {
     globalState.setEligibleState(STATE.DOING);
     try {
-        //const stocks = await getStocks();
-        const d1 = await getStock('DRS');
-        const d2 = await getStock('PAGS');
-        const d3 = await getStock('DSEY');
-
-        const stocks = [d1, d2, d3];
+        const stocks = await getStocks();
 
         for (let stock of stocks) {
             if (stock === null) continue;
