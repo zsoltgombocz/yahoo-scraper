@@ -37,6 +37,22 @@ function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
     return value !== null && value !== undefined;
 }
 
+function hasAtLeastTwoNegativeNumbers(numbers: number[]): boolean {
+    let negativeCount = 0;
+
+    for (let i = 0; i < numbers.length; i++) {
+        if (numbers[i] < 0) {
+            negativeCount++;
+
+            if (negativeCount >= 2) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 export const getIncomePercentage = (stock: stockInterface): { percentage: number | null, percentages: number[] } => {
 
     if (stock.incomeData === undefined || stock.incomeData.length === 0) return { percentage: null, percentages: [] };
@@ -49,6 +65,10 @@ export const getIncomePercentage = (stock: stockInterface): { percentage: number
             return (incomeData.NICS / incomeData.totalRevenue) * 100
         }
     ).filter(notEmpty);
+
+    const hasMoreThanTwoMinuses = hasAtLeastTwoNegativeNumbers(percentages);
+
+    if (hasMoreThanTwoMinuses) return { percentage: null, percentages: percentages };
 
     const percAvg: number = percentages.reduce(
         (accumulator: number, percentage: number | null) => accumulator + (percentage || 0),
@@ -104,7 +124,6 @@ const sortStock = async (stock: stockInterface) => {
 
 export const getTypesBasedOnEligibility = (annual: boolean | null, quarterly: boolean | null): listType[] => {
     let types: listType[] = [];
-    console.debug(annual, quarterly);
 
     if (annual === null || quarterly === null) return types;
 
