@@ -1,6 +1,6 @@
 import express, { Response, Request, Router } from "express";
 import { STATE, globalState } from "./state";
-import { addStockToList, client, fetchType, getStock, getStocks, getStocksFromList, listType, saveIncomePercentage, stockInterface } from "./db";
+import { addStockToList, client, fetchType, getStock, getStockNames, getStocks, getStocksFromList, listType, saveIncomePercentage, stockInterface, updateStock } from "./db";
 import { saveFilteredStocks } from "./scrapeStocks";
 import { saveFinancialData } from "./scrapeFinance";
 import { checkStocks, getIncomePercentage, getTypesBasedOnEligibility, isEligible } from "./filterStocks";
@@ -90,14 +90,24 @@ router.get('/check/:stock', async (req: Request, res: Response): Promise<Respons
     const stockIsEligible = await isEligible(stockInfo);
     const eligible = stockInfo.eligible;
     const types = getTypesBasedOnEligibility(eligible.annual, eligible.quarterly);
-    const percentage = getIncomePercentage(stockInfo);
+    const percData = getIncomePercentage(stockInfo);
     await addStockToList(stockInfo.name, types)
-    await saveIncomePercentage(stockInfo.name, percentage)
+    await updateStock(stockInfo.name, {
+        incomePercent: percData.percentage,
+        incomePercentages: percData.percentages
+    });
 
     return res.status(200).json({
         list: types,
-        percentage,
+        percData,
+        stockIsEligible
     });
+})
+
+router.get('/stocklist', async (req: Request, res: Response): Promise<Response> => {
+    const stocks = await getStockNames();
+
+    return res.status(200).json(stocks);
 })
 
 router.get('/rawlist/:list', async (req: Request, res: Response): Promise<Response> => {
