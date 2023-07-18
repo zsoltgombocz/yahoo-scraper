@@ -1,4 +1,4 @@
-import { addStockToList, annualDataInterface, fetchType, getStocks, incomeDatainterface, listType, quarterlyDataInterface, saveIncomePercentage, saveUpdateTime, stockInterface, updateStock } from "./db"
+import { addStockToList, annualDataInterface, fetchType, getStock, getStocks, incomeDatainterface, listType, quarterlyDataInterface, saveIncomePercentage, saveUpdateTime, stockInterface, updateStock } from "./db"
 import { STATE, globalState } from "./state";
 
 const checkFinancials = (
@@ -17,47 +17,72 @@ export const isEligible = async (stock: stockInterface): Promise<boolean | undef
         const annual: annualDataInterface[] = stock.financialData.annual;
         const quarterly: quarterlyDataInterface[] = stock.financialData.quarterly;
 
+        if (quarterly.length === 0 || annual.length === 0) return undefined;
+
         const annualPass = annual.every(
             (data: annualDataInterface) => checkFinancials(data.totalAssets, data.totalLiabilities, data.totalEquity)
         );
 
         const quarterlyPass = checkFinancials(quarterly[0].totalAssets, quarterly[0].totalLiabilities, quarterly[0].totalEquity);
         await updateStock(stock.name, { ...stock, eligible: { annual: annualPass, quarterly: quarterlyPass } });
+
+        return true;
     } catch (error) {
-        console.log('Error while checking stock financial:', error);
+        console.log(`Error while checking stock ${stock.name} financial:`, error);
+        return undefined;
     }
 }
 
-export const getIncomePercentage = (stock: stockInterface): number | null => {
-    if (stock.incomeData === null || stock.incomeData.length === 0) return null;
+function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
+    return value !== null && value !== undefined;
+}
 
-    const percentages = stock.incomeData.map(
+export const getIncomePercentage = (stock: stockInterface): { percentage: number | null, percentages: number[] } => {
+
+    if (stock.incomeData === undefined || stock.incomeData.length === 0) return { percentage: null, percentages: [] };
+
+
+    const percentages: number[] = stock.incomeData.map(
         (incomeData: incomeDatainterface) => {
             if (incomeData.NICS === null || incomeData.totalRevenue === null) return null;
 
             return (incomeData.NICS / incomeData.totalRevenue) * 100
         }
-    );
+    ).filter(notEmpty);
 
     const percAvg: number = percentages.reduce(
         (accumulator: number, percentage: number | null) => accumulator + (percentage || 0),
         0
     );
 
-    return percAvg / percentages.filter(perc => perc !== null).length;
+    return {
+        percentage: percAvg / percentages.filter(perc => perc !== null).length,
+        percentages
+    };
 }
 
 export const checkStocks = async () => {
     globalState.setEligibleState(STATE.DOING);
     try {
-        const stocks = await getStocks();
+        //const stocks = await getStocks();
+        const d1 = await getStock('DRS');
+        const d2 = await getStock('PAGS');
+        const d3 = await getStock('DSEY');
+
+        const stocks = [d1, d2, d3];
 
         for (let stock of stocks) {
             if (stock === null) continue;
 
-            await isEligible(stock);
-            const percentage = await getIncomePercentage(stock);
-            await saveIncomePercentage(stock.name, percentage);
+            const eligible = await isEligible(stock);
+
+            if (eligible === undefined) continue;
+
+            const percData = await getIncomePercentage(stock);
+            await updateStock(stock.name, {
+                incomePercent: percData.percentage,
+                incomePercentages: percData.percentages
+            });
 
             console.log(`Eligibility checked on stock: ${stock.name}. [${stocks.indexOf(stock)}/${stocks.length}]`);
 
@@ -74,7 +99,7 @@ export const checkStocks = async () => {
 
 const sortStock = async (stock: stockInterface) => {
     try {
-        const listTypes = getTypesBasedOnEligibility(stock.eligible.annual, stock.eligible.quarterly, stock.name === 'GNTX');
+        const listTypes = getTypesBasedOnEligibility(stock.eligible.annual, stock.eligible.quarterly);
 
         await addStockToList(stock.name, listTypes);
     } catch (error) {
@@ -82,10 +107,9 @@ const sortStock = async (stock: stockInterface) => {
     }
 }
 
-export const getTypesBasedOnEligibility = (annual: boolean | null, quarterly: boolean | null, log: boolean = false): listType[] => {
+export const getTypesBasedOnEligibility = (annual: boolean | null, quarterly: boolean | null): listType[] => {
     let types: listType[] = [];
-    if (log) console.debug(annual, quarterly);
-
+    console.debug(annual, quarterly);
 
     if (annual === null || quarterly === null) return types;
 
