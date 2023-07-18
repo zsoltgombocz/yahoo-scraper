@@ -78,22 +78,17 @@ export const getStocks = async (): Promise<stockInterface[]> => {
         const stocks: string[] = await getStockNames();
         const stockList: stockInterface[] = [];
 
-        if (STOCK_LIST.length > 0) {
-            console.log('Giving back stocks from memory!');
-            return STOCK_LIST;
-        } else {
-            console.log('Getting stock for the first time... takes 300 sec');
-            for (let stock of stocks) {
-                const stockData = await getStock(stock);
+        console.log('Getting stock... takes 300 sec');
+        for (let stock of stocks) {
+            const stockData = await getStock(stock);
 
-                if (stockData !== null) {
-                    stockList.push(stockData);
-                }
-
+            if (stockData !== null) {
+                stockList.push(stockData);
             }
-            STOCK_LIST = stockList;
-            return stockList;
+
         }
+
+        return stockList;
     } catch (error) {
         console.log('Error while getting stock list: ', error);
         return [] as stockInterface[];
