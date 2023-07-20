@@ -118,12 +118,13 @@ router.get('/rawlist/:list', async (req: Request, res: Response): Promise<Respon
 
 router.get('/list', async (req: Request, res: Response): Promise<any> => {
     const workbook = new ExcelJS.Workbook();
-    const okStocks = await getStocksFromList(listType.ANNUAL_OK_QUARTERLY_OK);
-    const tab1 = await getStocksFromList(listType.ANNUAL_OK);
+    let stocks: stockInterface[] = await getStocks();
+    const okStocks = stocks.filter(stock => stock.list.includes(listType.ANNUAL_OK_QUARTERLY_OK));
+    const tab1 = stocks.filter(stock => stock.list.includes(listType.ANNUAL_OK));
     const tab2 = okStocks;
-    const tab3 = await getStocksFromList(listType.ANNUAL_OK_QUARTERLY_NO);
-    const tab4 = await getStocksFromList(listType.QUARTERLY_OK);
-    const tab5 = await getStocksFromList(listType.QUARTERLY_NO);
+    const tab3 = stocks.filter(stock => stock.list.includes(listType.ANNUAL_OK_QUARTERLY_NO));
+    const tab4 = stocks.filter(stock => stock.list.includes(listType.QUARTERLY_OK));
+    const tab5 = stocks.filter(stock => stock.list.includes(listType.QUARTERLY_NO));
 
     //0<x<=5
     const tab6 = okStocks.filter(
@@ -142,10 +143,7 @@ router.get('/list', async (req: Request, res: Response): Promise<any> => {
         { name: listType.ANNUAL_OK_QUARTERLY_OK, data: tab2 },
         { name: listType.ANNUAL_OK_QUARTERLY_NO, data: tab3 },
         { name: listType.QUARTERLY_OK, data: tab4 },
-        { name: listType.QUARTERLY_NO, data: tab5 },
-        { name: '0<x<=5', data: tab6 },
-        { name: '5<x<20', data: tab7 },
-        { name: 'x>=20', data: tab8 }
+        { name: listType.QUARTERLY_NO, data: tab5 }
     ];
 
     tabs.forEach(tab => {
@@ -155,6 +153,15 @@ router.get('/list', async (req: Request, res: Response): Promise<any> => {
             worksheet.addRow([value.name]);
         });
     });
+
+    const percentWorksheet = workbook.addWorksheet('%');
+    percentWorksheet.addRow([
+        'Név', 'Szektor', 'Össz %', '1. %', '2. %', '3. %', '4. %', '5. %'
+    ]);
+
+    okStocks.forEach(stock => {
+        percentWorksheet.addRow([stock.name, stock?.sector, stock.incomePercent, ...stock.incomePercentages || []]);
+    })
 
     const stream = new MemoryStream();
     const now = new Date().toLocaleDateString();
