@@ -1,5 +1,6 @@
 import { addStockToList, annualDataInterface, fetchType, getStock, getStocks, incomeDatainterface, listType, quarterlyDataInterface, saveIncomePercentage, saveUpdateTime, stockInterface, updateStock } from "./db"
 import { STATE, globalState } from "./state";
+import { logger } from "./utils/logger";
 
 const checkFinancials = (
     totalAssets: number | null, totalLiabilities: number | null, totalEquity: number | null
@@ -99,7 +100,7 @@ export const checkStocks = async () => {
                 incomePercentages: percData.percentages
             });
 
-            console.log(`Eligibility checked on stock: ${stock.name}. [${stocks.indexOf(stock)}/${stocks.length}]`);
+            logger.info(`Eligibility checked on stock: ${stock.name}. [${stocks.indexOf(stock)}/${stocks.length}]`);
 
             await sortStock(stock);
         }

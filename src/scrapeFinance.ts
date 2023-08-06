@@ -3,6 +3,7 @@ import { load } from "cheerio";
 import { STATE, globalState } from './state';
 import { annualDataInterface, fetchType, getStockNames, incomeDatainterface, quarterlyDataInterface, saveUpdateTime, stockFinancialDataInterface, stockInterface, updateStock } from './db';
 import { Page } from 'puppeteer';
+import { logger } from './utils/logger';
 
 interface rawHTMLs {
     annual: string | undefined;
@@ -262,7 +263,7 @@ export const saveFinancialData = async (stockName?: string): Promise<void | stoc
             const incomeData = await getIncomeData(stock);
 
             if (data !== null && incomeData !== null) {
-                console.log(`${stock} financial data saved...`);
+                logger.info(`${stock} financial data saved from Yahoo.`);
 
                 const stockObject: stockInterface = {
                     name: stock,

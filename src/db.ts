@@ -1,5 +1,6 @@
 import { createClient, RedisClientType } from 'redis';
 import 'dotenv/config';
+import { logger } from './utils/logger';
 
 export let STOCK_LIST: stockInterface[] = [];
 
@@ -8,10 +9,10 @@ export const client: RedisClientType = createClient({
 
 });
 
-client.on('error', err => console.log('Redis error:', err));
+client.on('error', err => logger.error('REDIS: ', err.message));
 
 client.on('connect', () => {
-    console.log('Connected to Redis!');
+    logger.info('REDIS: Connected to Redis!');
 });
 export interface stockFinancialDataInterface {
     annual: annualDataInterface[],

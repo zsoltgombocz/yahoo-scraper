@@ -1,6 +1,7 @@
 import { load } from "cheerio";
 import { STATE, globalState } from "./state";
 import { fetchType, saveUpdateTime, updateStock } from './db';
+import { logger } from "./utils/logger";
 
 interface scrapedStockInterface {
     name: string;
@@ -63,7 +64,7 @@ const getAllStocks = (baseURL: string | undefined): Promise<scrapedStockInterfac
             currentCount = currentCount + 20;
             const page: screenerPageInterface = await scrapePage(`${baseURL}&r=${currentCount}`);
             allStocks = allStocks.concat(page.stocks);
-            console.log(`Scraped so far ${currentCount} and counting...`);
+            logger.info(`Scraped so far ${currentCount}...`)
             await sleep(1000);
         }
 
