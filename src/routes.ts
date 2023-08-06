@@ -6,6 +6,10 @@ import { saveFinancialData } from "./scrapeFinance";
 import { checkStocks, getIncomePercentage, getTypesBasedOnEligibility, isEligible } from "./filterStocks";
 import ExcelJS from 'exceljs';
 import MemoryStream from 'memorystream';
+import { generateExcel } from "./generateExcel";
+import { runMonthlyCheck } from "./monthlyCheck";
+
+const fs = require('fs');
 
 const router: Router = express.Router();
 
@@ -34,7 +38,7 @@ router.get('/status', async (req: Request, res: Response): Promise<Response> => 
     });
 })
 
-router.get('/fetch', async (req: Request, res: Response): Promise<Response> => {
+router.get('/finviz', async (req: Request, res: Response): Promise<Response> => {
     if (globalState.stock !== STATE.DOING) {
         saveFilteredStocks();
     }
@@ -50,6 +54,14 @@ router.get('/finance', async (req: Request, res: Response): Promise<Response> =>
     return res.status(200).send(`${globalState.finance}. A "/status" oldalon lehet látni az állapotot.`);
 });
 
+router.get('/check', async (req: Request, res: Response): Promise<Response> => {
+    if (globalState.eligible !== STATE.DOING) {
+        checkStocks();
+    }
+
+    return res.status(200).send(`${globalState.eligible}. A "/status" oldalon lehet látni az állapotot.`);
+})
+
 router.get('/info', async (req: Request, res: Response): Promise<Response> => {
     const stocks = await getStocks();
 
@@ -62,125 +74,23 @@ router.get('/info/:stock', async (req: Request, res: Response): Promise<Response
     return res.status(200).json(stockInfo);
 })
 
-router.get('/eligible/:stock', async (req: Request, res: Response): Promise<Response> => {
-    const stockInfo = await getStock(req.params.stock);
-    const eligible = stockInfo !== null ? isEligible(stockInfo) : null;
+router.get('/update', async (req: Request, res: Response): Promise<Response> => {
+    runMonthlyCheck();
 
-    return res.status(200).json(eligible);
-})
-
-router.get('/check', async (req: Request, res: Response): Promise<Response> => {
-    if (globalState.eligible !== STATE.DOING) {
-        checkStocks();
-    }
-
-    return res.status(200).send(`${globalState.eligible}. A "/status" oldalon lehet látni az állapotot.`);
-})
-
-router.get('/finance/:stock', async (req: Request, res: Response): Promise<Response> => {
-    const data = await saveFinancialData(req.params.stock);
-
-    return res.status(200).send(data);
+    return res.status(200).send('Frissítés elindítva, a /status oldalon lehet látni hol tart.');
 });
 
-router.get('/check/:stock', async (req: Request, res: Response): Promise<Response> => {
-    const stockInfo = await getStock(req.params.stock);
-    if (stockInfo === null) return res.status(200).send(`Nincs adat erről a cégről.`);
+router.get('/generate', async (req: Request, res: Response): Promise<any> => {
+    await generateExcel();
 
-    const stockIsEligible = await isEligible(stockInfo);
-    const eligible = stockInfo.eligible;
-    const types = getTypesBasedOnEligibility(eligible.annual, eligible.quarterly);
-    const percData = getIncomePercentage(stockInfo);
-    await addStockToList(stockInfo.name, types)
-    await updateStock(stockInfo.name, {
-        incomePercent: percData.percentage,
-        incomePercentages: percData.percentages
-    });
+    return res.status(200).send('Generálva.');
+});
 
-    return res.status(200).json({
-        list: types,
-        percData,
-        stockIsEligible
-    });
-})
+router.get('/download/:year/:month', async (req: Request, res: Response): Promise<any> => {
+    const year = req.params.year;
+    const month = req.params.month;
 
-router.get('/stocklist', async (req: Request, res: Response): Promise<Response> => {
-    const stocks = await getStockNames();
-
-    return res.status(200).json(stocks);
-})
-
-router.get('/rawlist/:list', async (req: Request, res: Response): Promise<Response> => {
-    const stocks = await getStocksFromList(req.params.list);
-
-    return res.status(200).json(stocks);
-})
-
-router.get('/list', async (req: Request, res: Response): Promise<any> => {
-    const workbook = new ExcelJS.Workbook();
-    let stocks: stockInterface[] = await getStocks();
-    const okStocks = stocks.filter(stock => stock.list.includes(listType.ANNUAL_OK_QUARTERLY_OK));
-    const tab1 = stocks.filter(stock => stock.list.includes(listType.ANNUAL_OK));
-    const tab2 = okStocks;
-    const tab3 = stocks.filter(stock => stock.list.includes(listType.ANNUAL_OK_QUARTERLY_NO));
-    const tab4 = stocks.filter(stock => stock.list.includes(listType.QUARTERLY_OK));
-    const tab5 = stocks.filter(stock => stock.list.includes(listType.QUARTERLY_NO));
-
-    //0<x<=5
-    const tab6 = okStocks.filter(
-        stock => stock.incomePercent !== null && stock.incomePercent <= 5 && stock.incomePercent > 0);
-
-    //5<x<20
-    const tab7 = okStocks.filter(
-        stock => stock.incomePercent !== null && stock.incomePercent > 5 && stock.incomePercent < 20);
-
-    //x>=20   
-    const tab8 = okStocks.filter(
-        stock => stock.incomePercent !== null && stock.incomePercent >= 20);
-
-    const tabs = [
-        { name: listType.ANNUAL_OK, data: tab1 },
-        { name: listType.ANNUAL_OK_QUARTERLY_OK, data: tab2 },
-        { name: listType.ANNUAL_OK_QUARTERLY_NO, data: tab3 },
-        { name: listType.QUARTERLY_OK, data: tab4 },
-        { name: listType.QUARTERLY_NO, data: tab5 }
-    ];
-
-    tabs.forEach(tab => {
-        const worksheet = workbook.addWorksheet(tab.name);
-
-        tab.data.forEach((value: stockInterface) => {
-            worksheet.addRow([value.name]);
-        });
-    });
-
-    const percentWorksheet = workbook.addWorksheet('%');
-    percentWorksheet.addRow([
-        'Név', 'Szektor', 'Össz %', '1. %', '2. %', '3. %', '4. %', '5. %'
-    ]);
-
-    okStocks.forEach(stock => {
-        percentWorksheet.addRow([stock.name, stock?.sector, stock.incomePercent, ...stock.incomePercentages || []]);
-    })
-
-    const stream = new MemoryStream();
-    const now = new Date().toLocaleDateString();
-
-    res.setHeader(
-        'Content-Type',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader(
-        'Content-Disposition',
-        'attachment; filename=' + `${now}.xlsx`
-    );
-
-    workbook.xlsx.write(stream).then(() => {
-        stream.on('end', () => {
-            res.end();
-        });
-        stream.pipe(res);
-    });
+    return res.download(`${process.cwd()}/public/${year}-${month}.xlsx`);
 });
 
 export default router;
