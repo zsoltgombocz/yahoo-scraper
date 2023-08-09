@@ -172,8 +172,8 @@ export const addStockToList = async (stockName: string, type: listType[]): Promi
         stock.list = type;
 
         await client.set(stockName, JSON.stringify(stock));
+        logger.info(`Stock ${stockName} added to list ${type}!`);
 
-        console.log(`Stock ${stockName} added to list ${type}!`);
     } catch (error) {
         console.log(`Error while adding list ${type} to ${stockName}: ${error}`);
     }
