@@ -100,7 +100,7 @@ export const checkStocks = async () => {
                 incomePercentages: percData.percentages
             });
 
-            logger.info(`Eligibility checked on stock: ${stock.name}. [${stocks.indexOf(stock)}/${stocks.length}]`);
+            logger.info(`Eligibility checked on stock: ${stock.name}. [${stocks.indexOf(stock) + 1}/${stocks.length}]`);
 
             await sortStock(stock);
         }
