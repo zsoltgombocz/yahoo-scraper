@@ -82,35 +82,38 @@ export const getIncomePercentage = (stock: stockInterface): { percentage: number
     };
 }
 
-export const checkStocks = async () => {
-    globalState.setEligibleState(STATE.DOING);
-    try {
-        const stocks = await getStocks();
+export const checkStocks = async (): Promise<void | string> => {
+    return new Promise(async (resolve) => {
+        globalState.setEligibleState(STATE.DOING);
+        try {
+            const stocks = await getStocks();
 
-        for (let stock of stocks) {
-            if (stock === null) continue;
+            for (let stock of stocks) {
+                if (stock === null) continue;
 
-            const eligible = await isEligible(stock);
+                const eligible = await isEligible(stock);
 
-            if (eligible === undefined) continue;
+                if (eligible === undefined) continue;
 
-            const percData = await getIncomePercentage(stock);
-            await updateStock(stock.name, {
-                incomePercent: percData.percentage,
-                incomePercentages: percData.percentages
-            });
+                const percData = await getIncomePercentage(stock);
+                await updateStock(stock.name, {
+                    incomePercent: percData.percentage,
+                    incomePercentages: percData.percentages
+                });
 
-            logger.info(`Eligibility checked on stock: ${stock.name}. [${stocks.indexOf(stock) + 1}/${stocks.length}]`);
+                logger.info(`Eligibility checked on stock: ${stock.name}. [${stocks.indexOf(stock) + 1}/${stocks.length}]`);
 
-            await sortStock(stock);
+                await sortStock(stock);
+            }
+
+            await saveUpdateTime(fetchType.ELIGIBLE, Date.now());
+            globalState.setEligibleState(STATE.DONE);
+            resolve('Stocks checked.')
+        } catch (error) {
+            console.log('Error while checking financials:', error);
+            globalState.setEligibleState(STATE.ERROR);
         }
-
-        await saveUpdateTime(fetchType.ELIGIBLE, Date.now());
-        globalState.setEligibleState(STATE.DONE);
-    } catch (error) {
-        console.log('Error while checking financials:', error);
-        globalState.setEligibleState(STATE.ERROR);
-    }
+    });
 }
 
 const sortStock = async (stock: stockInterface) => {

@@ -247,7 +247,6 @@ const getQuarterlyData = (quarterlyBalanceSheetHTML: string | undefined): quarte
 }
 
 export const saveFinancialData = async (stockName?: string): Promise<void | stockInterface> => {
-
     try {
         let stocks: string[] = [];
 
