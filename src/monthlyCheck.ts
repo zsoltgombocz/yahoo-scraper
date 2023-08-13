@@ -4,6 +4,7 @@ import { generateExcel } from "./generateExcel";
 import { saveFinancialData } from "./scrapeFinance";
 import { saveFilteredStocks } from "./scrapeStocks";
 import { logger } from "./utils/logger";
+import { sleep } from "./utils/sleep";
 
 export const runMonthlyCheck = (): Promise<string> => {
     return new Promise(async () => {
@@ -13,8 +14,9 @@ export const runMonthlyCheck = (): Promise<string> => {
             const stockAmount = (await getStockNames()).length;
             logger.info(`Finished stock updating. Previous: ${prevStockAmount}, now: ${stockAmount}`);
 
-            //await saveFinancialData();
-            logger.info(`Finished updateing financials.`);
+            await saveFinancialData();
+            logger.info(`Finished updating financials.`);
+            await sleep(10000);
 
             await checkStocks();
             logger.info(`Finished checking stocks.`);

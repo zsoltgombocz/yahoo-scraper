@@ -2,6 +2,7 @@ import { load } from "cheerio";
 import { STATE, globalState } from "./state";
 import { fetchType, saveUpdateTime, updateStock } from './db';
 import { logger } from "./utils/logger";
+import { sleep } from "./utils/sleep";
 
 interface scrapedStockInterface {
     name: string;
@@ -10,10 +11,6 @@ interface scrapedStockInterface {
 interface screenerPageInterface {
     stocks: scrapedStockInterface[];
     lastPage: number;
-}
-
-const sleep = async (time: number): Promise<void> => {
-    return new Promise(resolve => setTimeout(resolve, time));
 }
 
 const scrapePage = async (pageUrl: string): Promise<screenerPageInterface> => {
