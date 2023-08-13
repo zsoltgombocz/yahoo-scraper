@@ -9,7 +9,7 @@ export const runMonthlyCheck = (): Promise<string> => {
     return new Promise(async () => {
         try {
             const prevStockAmount = (await getStockNames()).length;
-            //await saveFilteredStocks();
+            await saveFilteredStocks();
             const stockAmount = (await getStockNames()).length;
             logger.info(`Finished stock updating. Previous: ${prevStockAmount}, now: ${stockAmount}`);
 
