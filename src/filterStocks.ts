@@ -119,7 +119,7 @@ export const checkStocks = async (): Promise<void | string> => {
 const sortStock = async (stock: stockInterface) => {
     try {
         const listTypes = getTypesBasedOnEligibility(stock.eligible.annual, stock.eligible.quarterly);
-
+        console.log('got list types', listTypes);
         await addStockToList(stock.name, listTypes);
     } catch (error) {
         console.log('Error while sorting stock:', error);
