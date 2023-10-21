@@ -1,30 +1,30 @@
 import express, { Application } from "express";
 import routes from './routes';
-import { client } from "./db";
-import cron from "node-cron";
+import { client } from "./redis/client";
 import 'dotenv/config';
-import { runMonthlyCheck } from "./monthlyCheck";
 import { logger } from "./utils/logger";
+import { formatDateMiddleware } from "./utils/formatDate";
+import FinvizService from "./services/FinvizService";
+import Fetcher from "./Fetcher";
 
 const app: Application = express();
 
+app.use(formatDateMiddleware);
 app.use('/', routes);
 
 const PORT = process.env.APP_PORT || 3000;
 
 try {
-    app.listen(PORT, (): void => {
-        logger.info(`Connected successfully on port ${PORT}`);
+    app.listen(PORT, async (): Promise<void> => {
+        logger.info(`APP: Connected successfully on port ${PORT}`);
 
-        client.connect();
-        const everyMonth = "0 0 15 1-12 *";
+        await client.connect();
 
-        cron.schedule(everyMonth, () => {
-            runMonthlyCheck()
-                .then(res => console.log(res))
-        });
+        const finvizService = new FinvizService(process.env.FINVIZ_BASE_URL, process.env.FINVIZ_EXCLUDE_URL);
+        const fetcher = new Fetcher(finvizService);
+
+        fetcher.saveFinvizStocks();
     });
-
 } catch (error: any) {
     console.error(`Error occured: ${error.message}`);
 }
