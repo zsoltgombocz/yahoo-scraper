@@ -19,6 +19,20 @@ const getBrowser = (): Promise<Browser> => {
     });
 }
 
+export const acceptCookie = (page: Page) => {
+    return new Promise(async (resolve) => {
+        page.waitForSelector('.accept-all', {
+            timeout: 2000
+        })
+            .then(() => {
+                page.click('.accept-all');
+                resolve('Cookie: Accepted.');
+            })
+            .catch(() => resolve('Cookie: Nothing to accept.'))
+            .finally(() => resolve('Cookie: Done.'));
+    })
+}
+
 export const getPage = (url: string): Promise<Page> => {
     return new Promise(async (resolve, reject) => {
         if (BROWSER === null) {
