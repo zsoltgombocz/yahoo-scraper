@@ -4,7 +4,7 @@ import { scraperStatus } from "../types";
 
 export type scraperState = {
     timestamp: number;
-    state: scraperStatus;
+    status: scraperStatus;
 }
 
 export class ServiceState {
