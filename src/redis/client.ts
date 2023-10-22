@@ -14,3 +14,5 @@ client.on('error', err => {
 client.on('connect', () => {
     logger.info('REDIS: Connected to Redis!');
 });
+
+export const nonStockKeys = ['finviz', 'yahoo'];
