@@ -14,6 +14,7 @@ export interface StockInterface {
     exists: boolean;
 
     save: () => void;
+    setFinancials: (financials: Partial<FinancialInterface>) => void;
 }
 
 export interface FinancialInterface {
@@ -30,14 +31,14 @@ export interface BalanceInterface {
     totalAssets?: number | undefined;
     totalLiabilities?: number | undefined;
     totalEquity?: number | undefined;
-    //? Reserved for unknown fields 👀 [key: string]: number | undefined; 
+    [key: string]: number | undefined;
 }
 
 export interface IncomeInterface {
     year: number;
     totalRevenue?: number | undefined;
     NICS?: number | undefined; //! Net Income Common Stockholders
-    //? Reserved for unknown fields 👀 [key: string]: number | undefined; 
+    [key: string]: number | undefined;
 }
 
 //? Computed fields which calculcated from the scraped data (income, financial)
@@ -100,6 +101,10 @@ export default class Stock implements StockInterface {
             logger.error(`STOCK[${this.name}]: Unable to parse loaded data.`);
             return this;
         }
+    }
+
+    setFinancials = (financials: Partial<FinancialInterface>) => {
+        this.financials = financials;
     }
 
     #set = (data: Partial<StockInterface>) => {
