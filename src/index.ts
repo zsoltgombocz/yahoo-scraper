@@ -6,6 +6,7 @@ import { logger } from "./utils/logger";
 import { formatDateMiddleware } from "./utils/formatDate";
 import FinvizService from "./services/FinvizService";
 import Fetcher from "./Fetcher";
+import YahooService from "./services/YahooService";
 
 const app: Application = express();
 
@@ -20,11 +21,13 @@ try {
 
         await client.connect();
 
-        const finvizService = new FinvizService(process.env.FINVIZ_BASE_URL, process.env.FINVIZ_EXCLUDE_URL);
-        const fetcher = new Fetcher(finvizService);
+        const finvizService = await new FinvizService(process.env.FINVIZ_BASE_URL, process.env.FINVIZ_EXCLUDE_URL).create();
+        const yahooService = await new YahooService(process.env.YAHOO_FINANCE_URL).create();
+        const fetcher = new Fetcher(finvizService, yahooService);
 
-        fetcher.saveFinvizStocks();
+        await fetcher.saveFinvizStocks();
+        await fetcher.updateStocks();
     });
 } catch (error: any) {
-    console.error(`Error occured: ${error.message}`);
+    console.error(`APP: Error occured: ${error.message}`);
 }
