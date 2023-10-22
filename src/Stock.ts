@@ -1,6 +1,8 @@
+import { registerCustomQueryHandler } from "puppeteer";
 import { client } from "./redis/client";
 import { listType } from "./types";
 import { logger } from "./utils/logger";
+import { hasAtLeastTwoNegativeNumbers, notEmpty } from "./utils/arrayHelpers";
 
 export interface StockInterface {
     name: string;
@@ -15,6 +17,7 @@ export interface StockInterface {
 
     save: () => void;
     setFinancials: (financials: Partial<FinancialInterface>) => void;
+    updateEligibility: () => void;
 }
 
 export interface FinancialInterface {
@@ -23,6 +26,7 @@ export interface FinancialInterface {
         quarterly: BalanceInterface[],
     };
     income?: IncomeInterface[];
+    marketCap?: string;
 }
 
 export interface BalanceInterface {
@@ -44,14 +48,14 @@ export interface IncomeInterface {
 //? Computed fields which calculcated from the scraped data (income, financial)
 //? These values computed with very specific calculations 
 export interface ComputedInterface {
-    income: {
+    income?: {
         avgPercentage: number | null;
         annualPercentages: number[];
     },
-    financial: {
+    financial?: {
         eligible: {
-            annual: boolean | null;
-            querterly: boolean | null;
+            annual: boolean | undefined;
+            quarterly: boolean | undefined;
         }
     }
 }
@@ -85,7 +89,7 @@ export default class Stock implements StockInterface {
         logger.info(`STOCK[${this.name}]: Saved!`)
     }
 
-    load = async (): Promise<StockInterface> => {
+    load = async (): Promise<Stock> => {
         const rawData: string | null = await client.get(this.name);
 
         if (rawData === null) return this;
@@ -103,8 +107,121 @@ export default class Stock implements StockInterface {
         }
     }
 
-    setFinancials = (financials: Partial<FinancialInterface>) => {
+    setFinancials = (financials: Partial<FinancialInterface>): void => {
         this.financials = financials;
+    }
+
+    updateEligibility = (): void => {
+        if (!this.financials?.balance) return;
+
+        const annual = this.financials.balance.annual;
+        const quarterly = this.financials.balance.quarterly;
+
+        if (quarterly.length === 0 || annual.length === 0) return undefined;
+
+        const annualPass = annual.every(
+            (data: BalanceInterface) => this.checkFinancials(data.totalAssets, data.totalLiabilities, data.totalEquity)
+        );
+
+        const quarterlyPass = this.checkFinancials(quarterly[0].totalAssets, quarterly[0].totalLiabilities, quarterly[0].totalEquity);
+
+        this.computed = {
+            ...this.computed,
+            financial: {
+                eligible: {
+                    annual: annualPass,
+                    quarterly: quarterlyPass
+                }
+            }
+        };
+
+        logger.info(`STOCK[${this.name}]: Updated computed financials. Computed: ${JSON.stringify(this.computed)}`);
+    }
+
+    checkFinancials = (
+        totalAssets: number | undefined, totalLiabilities: number | undefined, totalEquity: number | undefined
+    ): boolean | undefined => {
+        if (totalAssets === undefined || totalLiabilities === undefined || totalEquity === undefined) return undefined;
+
+        return (totalLiabilities * 1.5) < totalAssets && (totalEquity * 2.5) > totalLiabilities;
+    }
+
+    updateIncomePercentage = (): void => {
+
+        if (!this.financials || !this.financials?.income) return;
+
+        const percentages: number[] = this.financials.income.map(
+            (incomeData: IncomeInterface) => {
+                if (incomeData.NICS === undefined || incomeData.totalRevenue === undefined) return null;
+                if (incomeData.totalRevenue === 0) return null;
+
+                return (incomeData.NICS / incomeData.totalRevenue) * 100
+            }
+        ).filter(notEmpty);
+
+        const hasMoreThanTwoMinuses = hasAtLeastTwoNegativeNumbers(percentages);
+
+        const percetangeSum: number = percentages.reduce(
+            (accumulator: number, percentage: number | null) => accumulator + (percentage || 0),
+            0
+        );
+        const maxPercentage = percentages.reduce((a, b) => Math.max(a, b), -Infinity);
+        const percentageAvg = (percetangeSum - maxPercentage) / (percentages.filter(perc => perc !== null).length - 1)
+
+        this.computed = {
+            ...this.computed,
+            income: {
+                annualPercentages: percentages,
+                avgPercentage: hasMoreThanTwoMinuses ? null : percentageAvg,
+            }
+        }
+
+        logger.info(`STOCK[${this.name}]: Updated computed financials. Computed: ${JSON.stringify(this.computed)}`);
+    }
+
+    sortStock = () => {
+        const listTypes = this.getListTypes();
+        this.list = listTypes;
+
+        logger.info(`STOCK[${this.name}]: Added to lists: ${JSON.stringify(listTypes)}`);
+    }
+
+    getListTypes = (): listType[] => {
+        let types: listType[] = [];
+
+        if (this.computed?.financial?.eligible.annual === null
+            || this.computed?.financial?.eligible.quarterly === null
+        ) return types;
+
+        const { annual, quarterly } = this.computed!.financial!.eligible;
+
+        if (annual === true) {
+            types.push(listType.ANNUAL_OK);
+        }
+
+        if (annual === true && quarterly === true) {
+            types.push(listType.ANNUAL_OK_QUARTERLY_OK);
+        }
+
+        if (annual === true && quarterly === false) {
+            types.push(listType.ANNUAL_OK_QUARTERLY_NO);
+        }
+
+        if (quarterly === true) {
+            types.push(listType.QUARTERLY_OK);
+        } else {
+            types.push(listType.QUARTERLY_NO);
+        }
+
+        return types;
+    }
+
+    hasFourAnnualBalance = (): boolean => {
+        return this.financials?.balance?.annual.length === 4;
+    }
+
+    hasFourQuarterlyBalance = (): boolean => {
+        return this.financials?.balance?.quarterly.length === 4;
     }
 
     #set = (data: Partial<StockInterface>) => {
