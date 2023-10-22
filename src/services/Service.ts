@@ -11,6 +11,11 @@ export default abstract class Service {
         this.serviceState = new ServiceState(this.signature);
     }
 
+    loadServiceState = async () => {
+        const status = await this.serviceState.get();
+        this.status = status?.status || scraperStatus.HALTED;
+    }
+
     getStatus = (): scraperStatus => {
         return this.status;
     }
@@ -22,6 +27,6 @@ export default abstract class Service {
 
     getLastUpdate = async (): Promise<number> => {
         const state = await this.serviceState.get();
-        return state?.timestamp || 0;
+        return state === null ? 0 : (state?.timestamp || 0);
     }
 } 
