@@ -35,7 +35,15 @@ export default class FinvizService extends Service implements FinvizServiceInter
 
         this.finvizBaseUrl = finvizBaseUrl;
         this.finvizExcludeUrl = finvizExcludeUrl;
+    }
 
+    create = async () => {
+        const lastUpdate = await this.getLastUpdate();
+        if (lastUpdate === 0) {
+            this.setStatus(scraperStatus.HALTED);
+        }
+
+        await this.loadServiceState();
         return this;
     }
 
@@ -82,7 +90,7 @@ export default class FinvizService extends Service implements FinvizServiceInter
             const { lastPage, stocks } = await this.scrapePage(`${url}&r=1`);
             this.totalCount = 20 * lastPage;
             allStocks = [...stocks];
-            console.log(currentCount, this.totalCount);
+
             while (currentCount <= this.totalCount - 20) {
                 currentCount = currentCount + 20;
                 const { stocks } = await this.scrapePage(`${url}&r=${currentCount}`);
