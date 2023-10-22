@@ -7,6 +7,9 @@ import Service from "./Service";
 interface FinvizServiceInterface {
     finvizBaseUrl: string | undefined;
     finvizExcludeUrl: string | undefined;
+    scrapePage: (pageUrl: string) => Promise<{ lastPage: number, stocks: finvizStock[] }>;
+    scrape: (url: string) => Promise<finvizStock[]>;
+    getFinvizData: () => Promise<finvizStock[]>;
 }
 
 export type finvizStock = {
