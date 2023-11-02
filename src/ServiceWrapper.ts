@@ -7,6 +7,7 @@ import { client, nonStockKeys } from "./redis/client";
 import { logger } from "./utils/logger";
 import { BROWSER } from "./browser";
 import ExcelJS from 'exceljs';
+import cron from 'node-cron';
 
 export interface ServiceWrapperInterface {
     finvizService: FinvizService;
@@ -22,6 +23,28 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
     constructor(finvizService: FinvizService, yahooService: YahooService) {
         this.finvizService = finvizService;
         this.yahooService = yahooService;
+    }
+
+    run = (): void => {
+        const everyMonth = "0 0 15 1-12 *";
+        const every3Day = "0 0 15 1-12 *";
+
+        cron.schedule(everyMonth, () => {
+            this.generateExcel();
+        });
+
+        cron.schedule(every3Day, async () => {
+            await this.saveFinvizStocks();
+            await this.updateStocks();
+        });
+
+        if (process.env.FETCH_ON_START === "1") {
+            async () => {
+                logger.info(`[SERVICE-WRAPPER]: Fething data on start...`);
+                await this.saveFinvizStocks();
+                await this.updateStocks();
+            }
+        }
     }
 
     getStocks = async (): Promise<Stock[]> => {
