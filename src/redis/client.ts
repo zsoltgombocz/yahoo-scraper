@@ -2,8 +2,8 @@ import { createClient, RedisClientType } from 'redis';
 import { logger } from '../utils/logger';
 
 export const client: RedisClientType = createClient({
-    url: `redis://localhost:6379`,
-
+    url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+    password: process.env.REDIS_PASSWORD
 });
 
 client.on('error', err => {
