@@ -5,9 +5,7 @@ import { ServiceState } from "./utils/ServiceState";
 const router: Router = express.Router();
 
 router.get("/", async (req: Request, res: Response): Promise<Response> => {
-    const stock = await new Stock('INTC').load();
-
-    return res.status(200).json(stock);
+    return res.status(200).send('Version: 2.0');
 });
 
 router.get("/service/:signature", async (req: Request, res: Response): Promise<Response> => {
