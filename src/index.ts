@@ -5,8 +5,8 @@ import 'dotenv/config';
 import { logger } from "./utils/logger";
 import { formatDateMiddleware } from "./utils/formatDate";
 import FinvizService from "./services/FinvizService";
-import Fetcher from "./Fetcher";
 import YahooService from "./services/YahooService";
+import ServiceWrapper from "./ServiceWrapper";
 
 const app: Application = express();
 
@@ -23,10 +23,8 @@ try {
 
         const finvizService = await new FinvizService(process.env.FINVIZ_BASE_URL, process.env.FINVIZ_EXCLUDE_URL).create();
         const yahooService = await new YahooService(process.env.YAHOO_FINANCE_URL).create();
-        const fetcher = new Fetcher(finvizService, yahooService);
-
-        await fetcher.saveFinvizStocks();
-        await fetcher.updateStocks();
+        const serviceWrapper = new ServiceWrapper(finvizService, yahooService);
+        serviceWrapper.run();
     });
 } catch (error: any) {
     console.error(`APP: Error occured: ${error.message}`);
