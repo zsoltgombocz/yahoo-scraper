@@ -25,7 +25,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
         this.yahooService = yahooService;
     }
 
-    run = (): void => {
+    run = async (): Promise<void> => {
         const everyMonth = "0 0 15 1-12 *";
         const every3Day = "0 0 15 1-12 *";
 
@@ -39,11 +39,14 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
         });
 
         if (process.env.FETCH_ON_START === "1") {
-            async () => {
+            try {
                 logger.info(`[SERVICE-WRAPPER]: Fething data on start...`);
                 await this.saveFinvizStocks();
                 await this.updateStocks();
+            } catch (error) {
+                logger.info(`[SERVICE-WRAPPER-RUN]: ${error}`);
             }
+
         }
     }
 
@@ -61,52 +64,60 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
     }
 
     saveFinvizStocks = async () => {
-        const lastUpdate = await this.finvizService.getLastUpdate();
-        const diff = moment.unix(lastUpdate / 1000 || 0).add(1, 'days').diff(moment.now(), 'hours');
+        try {
+            const lastUpdate = await this.finvizService.getLastUpdate();
+            const diff = moment.unix(lastUpdate / 1000 || 0).add(1, 'days').diff(moment.now(), 'hours');
 
-        if ((diff < 1 || lastUpdate === 0) ||
-            (diff > 1 && this.finvizService.getStatus() !== scraperStatus.FINISHED)
-        ) {
-            const scrapedStocks: finvizStock[] = await this.finvizService.getFinvizData();
-            for (let i = 0; i < scrapedStocks.length; i++) {
-                await new Stock(
-                    scrapedStocks[i].name,
-                    scrapedStocks[i].country,
-                    scrapedStocks[i].sector
-                ).save();
+            if ((diff < 1 || lastUpdate === 0) ||
+                (diff > 1 && this.finvizService.getStatus() !== scraperStatus.FINISHED)
+            ) {
+                const scrapedStocks: finvizStock[] = await this.finvizService.getFinvizData();
+                for (let i = 0; i < scrapedStocks.length; i++) {
+                    await new Stock(
+                        scrapedStocks[i].name,
+                        scrapedStocks[i].country,
+                        scrapedStocks[i].sector
+                    ).save();
+                }
             }
+        } catch (error) {
+            logger.info(`[SERVICE-WRAPPER-SAVE-STOCKS]: ${error}`);
         }
     }
 
     updateStocks = async () => {
-        const lastUpdate = await this.finvizService.getLastUpdate();
-        const diff = moment.unix(lastUpdate / 1000 || 0).add(1, 'days').diff(moment.now(), 'hours');
+        try {
+            const lastUpdate = await this.yahooService.getLastUpdate();
+            const diff = moment.unix(lastUpdate / 1000 || 0).add(1, 'days').diff(moment.now(), 'hours');
 
-        if ((diff < 1 || lastUpdate === 0) ||
-            (diff > 1 && this.yahooService.getStatus() !== scraperStatus.FINISHED)
-        ) {
-            const allKeys = await client.keys('*');
-            if (allKeys === null) return;
+            if ((diff < 1 || lastUpdate === 0) ||
+                (diff > 1 && this.yahooService.getStatus() !== scraperStatus.FINISHED)
+            ) {
+                const allKeys = await client.keys('*');
+                if (allKeys === null) return;
 
-            const stocks = allKeys.filter(key => !nonStockKeys.includes(key));
+                const stocks = allKeys.filter(key => !nonStockKeys.includes(key));
 
-            for (let stockKey of stocks) {
-                const stock = await new Stock(stockKey).load();
-                const financialData = await this.yahooService.getFinancialData(stockKey);
+                for (let stockKey of stocks) {
+                    const stock = await new Stock(stockKey).load();
+                    const financialData = await this.yahooService.getFinancialData(stockKey);
 
-                if (financialData === null) {
-                    logger.info(`[SERVICE-WRAPPER]: Got null as financial data for ${stockKey}`);
-                    continue;
+                    if (financialData === null) {
+                        logger.info(`[SERVICE-WRAPPER]: Got null as financial data for ${stockKey}`);
+                        continue;
+                    }
+
+                    stock.setFinancials(financialData);
+                    stock.updateEligibility();
+                    stock.updateIncomePercentage();
+                    stock.sortStock();
+                    await stock.save();
                 }
 
-                stock.setFinancials(financialData);
-                stock.updateEligibility();
-                stock.updateIncomePercentage();
-                stock.sortStock();
-                await stock.save();
+                BROWSER?.close();
             }
-
-            BROWSER?.close();
+        } catch (error) {
+            logger.info(`[SERVICE-WRAPPER-UPDATE-STOCKS]: ${error}`);
         }
     }
 
