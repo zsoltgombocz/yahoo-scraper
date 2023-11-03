@@ -9,11 +9,11 @@ const getBrowser = (): Promise<Browser> => {
         try {
             BROWSER = await puppeteer.launch({
                 timeout: 60000,
-                headless: true,
-                args: [
+                headless: "new",
+                args: process.env.NODE_ENV === 'production' ? [
                     "--no-sandbox",
                     "--disable-gpu",
-                ]
+                ] : []
             });
 
             resolve(BROWSER);
