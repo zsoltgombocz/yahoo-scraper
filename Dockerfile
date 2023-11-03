@@ -10,14 +10,14 @@ RUN apt-get install -yyq gconf-service lsb-release wget xdg-utils
 
 RUN apt-get install -yyq fonts-liberation
 
-
 WORKDIR /app
 COPY package*.json .
-RUN npm ci\
-    && npm install typescript -g
+
+RUN npm ci
+RUN npm install typescript -g
 
 COPY . .
 
-RUN tsc
+RUN npm run tsc
 
 CMD ["npm", "run", "start:prod"]
