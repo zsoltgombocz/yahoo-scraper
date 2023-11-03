@@ -24,4 +24,11 @@ router.get("/stock/:name", async (req: Request, res: Response): Promise<Response
     return res.status(200).json(stock);
 });
 
+router.get('/download/:year/:month', async (req: Request, res: Response): Promise<any> => {
+    const year = req.params.year;
+    const month = req.params.month;
+
+    return res.download(`${process.cwd()}/public/${year}-${month}.xlsx`);
+});
+
 export default router;
