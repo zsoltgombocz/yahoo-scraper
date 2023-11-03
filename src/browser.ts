@@ -1,5 +1,6 @@
 import puppeteer, { Browser, Page } from "puppeteer";
 import 'dotenv/config';
+import { logger } from "./utils/logger";
 
 export let BROWSER: Browser | null = null;
 
@@ -8,12 +9,16 @@ const getBrowser = (): Promise<Browser> => {
         try {
             BROWSER = await puppeteer.launch({
                 timeout: 60000,
-                headless: process.env.NODE_ENV === 'production' ? true : false,
-                executablePath: process.env.NODE_ENV === 'production' ? '/usr/bin/chromium-browser' : undefined
+                headless: true,
+                args: [
+                    "--no-sandbox",
+                    "--disable-gpu",
+                ]
             });
 
             resolve(BROWSER);
         } catch (error) {
+            logger.error(`[BROWSER]: ${error}`);
             reject(null);
         }
     });
