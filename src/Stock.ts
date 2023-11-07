@@ -135,7 +135,7 @@ export default class Stock implements StockInterface {
             }
         };
 
-        logger.info(`STOCK[${this.name}]: Updated computed financials. Computed: ${JSON.stringify(this.computed)}`);
+        logger.info(`STOCK[${this.name}]: Updated computed financials (financial). Computed: ${JSON.stringify(this.computed)}`);
     }
 
     checkFinancials = (
@@ -176,7 +176,7 @@ export default class Stock implements StockInterface {
             }
         }
 
-        logger.info(`STOCK[${this.name}]: Updated computed financials. Computed: ${JSON.stringify(this.computed)}`);
+        logger.info(`STOCK[${this.name}]: Updated computed financials (income). Computed: ${JSON.stringify(this.computed)}`);
     }
 
     sortStock = () => {
@@ -189,9 +189,7 @@ export default class Stock implements StockInterface {
     getListTypes = (): listType[] => {
         let types: listType[] = [];
 
-        if (this.computed?.financial?.eligible.annual === null
-            || this.computed?.financial?.eligible.quarterly === null
-        ) return types;
+        if (!this.computed?.financial || !this.computed.financial.eligible) return types;
 
         const { annual, quarterly } = this.computed!.financial!.eligible;
 
