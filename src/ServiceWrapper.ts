@@ -189,7 +189,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                         stock.name,
                         stock?.sector,
                         stock.computed?.income?.avgPercentage,
-                        ...stock.computed?.income?.annualPercentages || [],
+                        ...stock.computed?.income?.annualPercentages || new Array(5).fill(null),
                         stock.financials?.marketCap,
                         lastYearLiabilities === 0 ? null : lastYearAssets / lastYearLiabilities
                     ]);
