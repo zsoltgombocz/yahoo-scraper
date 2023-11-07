@@ -166,7 +166,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                     stock.name,
                     stock?.sector,
                     stock.computed?.income?.avgPercentage,
-                    ...stock.computed?.income?.annualPercentages || [],
+                    ...stock.computed?.income?.annualPercentages || new Array(5).fill(null),
                     stock.financials?.marketCap,
                     lastYearLiabilities === 0 ? null : lastYearAssets / lastYearLiabilities
                 ]);
@@ -198,7 +198,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
             const year = new Date().getFullYear();
             const month = new Date().getMonth() + 1;
 
-            workbook.xlsx
+            await workbook.xlsx
                 .writeFile(`./public/${year}-${month < 10 ? '0' + month : month}.xlsx`);
 
             logger.info(`[SERVICE-WRAPPER]: Excel created!`);
