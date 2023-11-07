@@ -13,7 +13,7 @@ const getBrowser = (): Promise<Browser> => {
                 args: process.env.NODE_ENV === 'production' ? [
                     "--no-sandbox",
                     "--disable-gpu",
-                ] : []
+                ] : undefined
             });
 
             resolve(BROWSER);
