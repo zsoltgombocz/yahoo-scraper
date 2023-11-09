@@ -48,7 +48,7 @@ class YahooService extends Service implements YahooServiceInterface {
         return this;
     }
 
-    #getRawHTML = async (stock: string, type: 'financials' | 'balance-sheet'): Promise<rawHTML | null> => {
+    #getRawHTML = async (stock: string, type: 'financials' | 'balance-sheet' | ''): Promise<rawHTML | null> => {
         let page: Page | undefined;
 
         try {
@@ -117,6 +117,33 @@ class YahooService extends Service implements YahooServiceInterface {
         return parsedArray;
     }
 
+    #getMarketCap = async (stock: string): Promise<string | undefined> => {
+        let marketCap: string | undefined;
+
+        try {
+            let page: Page | undefined;
+
+            const url = `${this.yahooFinanceUrl}/${stock}/?p=${stock}`;
+            page = await getPage(url);
+
+            await acceptCookie(page);
+
+            await page.setViewport({ width: 1080, height: 1024 });
+
+            await page.waitForSelector('td[data-test="MARKET_CAP-value"]');
+
+            marketCap = await page.$eval('td[data-test="MARKET_CAP-value"]', element => element.innerHTML);
+
+            await page.close();
+
+            return marketCap;
+        } catch (error) {
+            logger.error(`SERVICE[${this.signature}]: Error while getting market cap: ${error}`);
+        }
+
+        return marketCap;
+    }
+
     #getIncomeData = async (stock: string): Promise<IncomeInterface[]> => {
         let incomeData: IncomeInterface[] = [];
 
@@ -161,12 +188,14 @@ class YahooService extends Service implements YahooServiceInterface {
 
     getFinancialData = async (stock: string): Promise<FinancialInterface | null> => {
         try {
+            const marketCap = await this.#getMarketCap(stock);
             const incomeData = await this.#getIncomeData(stock);
             const balanceData = await this.#getBalanceData(stock);
 
             return {
                 income: incomeData,
-                balance: balanceData
+                balance: balanceData,
+                marketCap: marketCap
             } as FinancialInterface;
         } catch (error) {
             logger.error(`SERVICE[${this.signature}]: Error while getting financial data: ${error}`);
