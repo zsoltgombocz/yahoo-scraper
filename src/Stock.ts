@@ -26,7 +26,7 @@ export interface FinancialInterface {
         quarterly: BalanceInterface[],
     };
     income?: IncomeInterface[];
-    marketCap?: string;
+    marketCap?: number;
 }
 
 export interface BalanceInterface {

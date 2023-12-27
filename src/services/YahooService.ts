@@ -117,9 +117,7 @@ class YahooService extends Service implements YahooServiceInterface {
         return parsedArray;
     }
 
-    #getMarketCap = async (stock: string): Promise<string | undefined> => {
-        let marketCap: string | undefined;
-
+    #getMarketCap = async (stock: string): Promise<number | undefined> => {
         try {
             let page: Page | undefined;
 
@@ -132,16 +130,22 @@ class YahooService extends Service implements YahooServiceInterface {
 
             await page.waitForSelector('td[data-test="MARKET_CAP-value"]');
 
-            marketCap = await page.$eval('td[data-test="MARKET_CAP-value"]', element => element.innerHTML);
+            const marketCapText = await page.$eval('td[data-test="MARKET_CAP-value"]', element => element.innerHTML);
 
             await page.close();
 
-            return marketCap;
+            if (marketCapText?.includes('M')) {
+                return Math.round(parseFloat(marketCapText.slice(0, -1)));
+            } else if (marketCapText?.includes('B')) {
+                return Math.round(parseFloat(marketCapText.slice(0, -1))) * 1_000;
+            } else {
+                return Math.round(parseFloat(marketCapText.slice(0, -1))) * 1_000_000;
+            }
         } catch (error) {
             logger.error(`SERVICE[${this.signature}]: Error while getting market cap: ${error}`);
+            return undefined;
         }
 
-        return marketCap;
     }
 
     #getIncomeData = async (stock: string): Promise<IncomeInterface[]> => {
