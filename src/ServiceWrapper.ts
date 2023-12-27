@@ -161,12 +161,14 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                     stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
                 const lastYearAssets = lastYearIncome?.totalAssets || 0;
                 const lastYearLiabilities = lastYearIncome?.totalLiabilities || 0
+                const incomePercentages: number[] | undefined = stock.computed?.income?.annualPercentages;
+                const incomePercentageRows = incomePercentages == undefined ? new Array(5).fill(" ") : [...incomePercentages, ...(new Array(5 - incomePercentages?.length).fill(" "))];
 
                 percentWorksheet.addRow([
                     stock.name,
                     stock?.sector,
                     stock.computed?.income?.avgPercentage,
-                    ...stock.computed?.income?.annualPercentages || new Array(5).fill(null),
+                    ...incomePercentageRows,
                     stock.financials?.marketCap,
                     lastYearLiabilities === 0 ? null : lastYearAssets / lastYearLiabilities
                 ]);
@@ -189,7 +191,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                         stock.name,
                         stock?.sector,
                         stock.computed?.income?.avgPercentage,
-                        ...stock.computed?.income?.annualPercentages || new Array(5).fill(null),
+                        ...stock.computed?.income?.annualPercentages || new Array(5).fill(" "),
                         stock.financials?.marketCap,
                         lastYearLiabilities === 0 ? null : lastYearAssets / lastYearLiabilities
                     ]);
