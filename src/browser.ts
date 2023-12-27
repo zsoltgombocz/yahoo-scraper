@@ -8,7 +8,8 @@ const getBrowser = (): Promise<Browser> => {
     return new Promise(async (resolve, reject) => {
         try {
             BROWSER = await puppeteer.launch({
-                timeout: 60000,
+                protocolTimeout: 360_000,
+                timeout: 120_000,
                 headless: "new",
                 args: process.env.NODE_ENV === 'production' ? [
                     "--no-sandbox",
