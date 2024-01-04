@@ -41,7 +41,7 @@ router.get('/generate', async (req: Request, res: Response): Promise<any> => {
     const year = new Date().getFullYear();
     const month = new Date().getMonth() + 1;
 
-    return res.download(`${process.cwd()}/public/${year}-${month}.xlsx`);
+    return res.download(`${process.cwd()}/public/${year}-${month < 10 ? '0' + month : month}.xlsx`);
 });
 
 export default router;
