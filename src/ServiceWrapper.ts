@@ -180,7 +180,11 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
             ]);
 
             okStocks
-                .filter(stock => stock.hasFourAnnualBalance() && stock.hasFourQuarterlyBalance() && stock.computed?.income?.annualPercentages.length === 4)
+                .filter(stock =>
+                    stock.hasFourAnnualBalance() &&
+                    stock.hasFourQuarterlyBalance() &&
+                    stock.computed?.income?.annualPercentages.length === 4
+                )
                 .forEach(stock => {
                     const lastYearIncome: BalanceInterface | undefined =
                         stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];

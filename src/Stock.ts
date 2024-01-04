@@ -215,11 +215,11 @@ export default class Stock implements StockInterface {
     }
 
     hasFourAnnualBalance = (): boolean => {
-        return this.financials?.balance?.annual.length === 4;
+        return this.financials?.income?.length === 4;
     }
 
     hasFourQuarterlyBalance = (): boolean => {
-        return this.financials?.balance?.quarterly.length === 4;
+        return this.financials?.income?.length === 4;
     }
 
     #set = (data: Partial<StockInterface>) => {
