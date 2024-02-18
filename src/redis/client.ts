@@ -6,12 +6,10 @@ export const client: RedisClientType = createClient({
 });
 
 client.on('error', err => {
-    logger.error('REDIS:', err);
+    logger.error(`REDIS: ${err.message}`);
     process.exit(1);
 });
 
 client.on('connect', () => {
     logger.info('REDIS: Connected to Redis!');
 });
-
-export const nonStockKeys = ['finviz', 'yahoo'];
