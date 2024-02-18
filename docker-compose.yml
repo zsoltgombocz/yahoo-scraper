@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   redis:
-    container_name: redis-db
+    container_name: yahoo-scraper-redis
     image: redis:latest
     ports: 
       - 6379:6379
@@ -11,7 +11,7 @@ services:
       - redis:/data
 
   app:
-    container_name: stock-filter-app
+    container_name: yahoo-scraper
     build: .
     ports: 
       - 3002:3000
@@ -19,11 +19,9 @@ services:
       - public:/app/public
     environment:
       FINVIZ_BASE_URL: 'https://finviz.com/screener.ashx?v=111&f=cap_smallover&o=company'
-      FINVIZ_EXCLUDE_URL: 'https://finviz.com/screener.ashx?v=111&f=cap_small,sec_financial&o=company'
       YAHOO_FINANCE_URL: 'https://finance.yahoo.com/quote'
       REDIS_URL: redis://redis:6379
       NODE_ENV: 'production'
-      FETCH_ON_START: '1'
     depends_on:
       - redis
 
