@@ -1,6 +1,6 @@
 import puppeteer, { Browser, Page } from "puppeteer";
 import 'dotenv/config';
-import { logger } from "./utils/logger";
+import { logger } from "../utils/logger";
 
 export let BROWSER: Browser | null = null;
 
