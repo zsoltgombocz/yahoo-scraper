@@ -1,36 +1,29 @@
-# Részvény kereső
-Előre meghatározott lista exportálása, mentése, majd megfelelő képletekkel további szűrés és lista létrehozása Excel-ben.
+# Yahoo Scraper
+From a pre filtered list it lets you scrape financial information about a stock from Yahoo Finance. The pre filetered company list is scraped from https://finviz.com.
 
-## Finviz cégek listája
+## Notice
+This project was made to support our work. Not intended to publish as an open source API, feel free to use the code to make your own API or modify
+the scraping but please **leave a star** when you do so.
+
+## List of the finviz URL's (pre filtered)
 - [https://finviz.com/screener.ashx?v=111&f=cap_smallover&o=company]
-- [https://finviz.com/screener.ashx?v=111&f=sec_financial&o=company]
 
-Két lista eredményét egymásból kivonni.
+Later on when the sector is 'financial' those are going to be ignored on databse insert.
 
-## Cégek szűrése Yahoo Finance-al:
-- [https://finance.yahoo.com/quote/INTC/balance-sheet?p=INTC] (példa)
+This list represents the "appropriate" companies. When there is a new company we must label it in the admin database as new, also check that are there any companies that not scraped due to the filtering and label them as "inappropriate" and let the user delete it. 
 
-Kép alapján a 3 adat fog kelleni és a képleteket kell rá használni. 
+## Getting financial info from Yahoo
+The API can start the scraping processes and then the results is going to be saved in a MySQL database which is an admin
+website's database (Laravel Filament). Update only the neccessary informations, if nothing changed then do nothing. 
 
-![](https://github.com/zsoltgombocz/stock-filter/blob/master/ext/cells_to_use.png?raw=true)
+This approach lets the user from the admin panel start a scraping process for a company or even start a whole update process for all the companies.
+With this we do not have to rely on HTTP requests to get infomation, simply track the scraping processes and update the admin panel to visually show that it is updating. 
 
-### Képletek:
-- [Total Debt X 1,5 < Total Assets]
-- [Net Tangible Assets X 2 > Total Debt]
+## Store data in Redis
+The scraping processes are stored in a Redis DB and with the API it can be easily retrieved, polling these endpoints can give information about each process.
 
+Also storing the list of the possibly companies just to be sure that always working with the right ones.
 
-### 1. szűrés: (annual)
-Mind a négy oszlopra igazak legyenek a képletek. (éves nézet)
-Ezek amik a kereskedhető listára kerülnek.
-
-### 2. szürés: (quarterly)
-Ide legyen két változat: finviz cégek és az 1. szűrés eredményei.
-Első oszlopban kell igazaknak lennie a képleteknek és ezek a cégek amik a kereskedő listában maradnak vagy kerülnek le.
-
-## Kimenetnek összesen 5 oszlop/fül Excel-ben:
-
-1. Elmúlt 4 éves adatokon szűrt cégek és mind a négy oszlopnak megfelelnek.
-2. Elmúlt 4 éves adatokon szűrt cégek és mind a négy oszlopnak megfelelnek + a negyedéves szűrés igaz rájuk.
-3. Elmúlt 4 éves adatokon szűrt cégek és mind a négy oszlopnak megfelelnek + a negyedéves szűrés nem igaz rájuk.
-4. Finviz cégek + a negyedéves szűrés igaz rájuk.
-5. Finviz cégek igaz + a negyedéves szűrés nem igaz rájuk.
+## Updating the stock informations
+Automatically: Every 5th day the finviz list is going to be updated along with the financial information with cron job.
+Manually: Manually update a stock data from the admin panel or start a new scraping process where the finviz and financial information is going to pe updated.
