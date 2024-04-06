@@ -5,12 +5,10 @@ From a pre filtered list it lets you scrape financial information about a stock 
 This project was made to support our work. Not intended to publish as an open source API, feel free to use the code to make your own API or modify
 the scraping but please **leave a star** when you do so.
 
-## List of the finviz URL's (pre filtered)
+## Finviz source URL
 - [https://finviz.com/screener.ashx?v=111&f=cap_smallover&o=company]
 
-Later on when the sector is 'financial' those are going to be ignored on databse insert.
-
-This list represents the "appropriate" companies. When there is a new company we must label it in the admin database as new, also check that are there any companies that not scraped due to the filtering and label them as "inappropriate" and let the user delete it. 
+This list represents the "appropriate" companies. When there is a new company we must label it in the admin's database as new, also check that are there any companies that not scraped due to the filtering and label them as "inappropriate" and let the user delete it. 
 
 ## Getting financial info from Yahoo
 The API can start the scraping processes and then the results is going to be saved in a MySQL database which is an admin
