@@ -59,19 +59,19 @@ class YahooService extends Service implements YahooServiceInterface {
 
             await page.setViewport({ width: 1080, height: 1024 });
 
-            await page.waitForSelector('#Main');
+            await page.waitForSelector('div.table');
 
-            const annualHTML: string = await page.$eval('#Main div:nth-child(2) > div', element => element.innerHTML);
+            const annualHTML: string = await page.$eval('div.table', element => element.innerHTML);
 
-            await page.waitForSelector('#Main .IbBox:nth-child(2) > button', { timeout: 5000 });
+            await page.waitForSelector('#tab-quarterly', { timeout: 5000 });
 
-            await sleep(2500);
+            await sleep(1500);
 
-            await page.click('#Main .IbBox:nth-child(2) > button');
+            await page.click('#tab-quarterly');
 
-            await sleep(2500);
+            await sleep(1500);
 
-            const quarterlyHTML: string = await page.$eval('#Main div:nth-child(2) > div', element => element.innerHTML);
+            const quarterlyHTML: string = await page.$eval('div.table', element => element.innerHTML);
 
             await page.close();
 
@@ -89,7 +89,7 @@ class YahooService extends Service implements YahooServiceInterface {
     #parseDataFromHTML = (html: string): { [key: string]: number | undefined }[] => {
         const $ = load(html);
 
-        const tableHeader = $('.D\\(tbhg\\) > .D\\(tbr\\) > div:not(:first-child)');
+        const tableHeader = $('.tableHeader > div.row > div.column:not(:first-child)');
         const parsedArray: { [key: string]: number | undefined }[] = [];
 
         tableHeader.each((i, div) => {
@@ -97,14 +97,14 @@ class YahooService extends Service implements YahooServiceInterface {
             const headerText = $(div).text();
 
             let parsedData: { [key: string]: number | undefined } = {
-                year: headerText === 'ttm' ? 0 : parseInt(headerText.split('/')[2]),
-                quarter: quarterRaw < 3 ? 1 : Math.ceil(quarterRaw / 3),
+                year: headerText === 'TTM' ? 0 : parseInt(headerText.split('/')[2]),
+                quarter: quarterRaw < 3 || isNaN(quarterRaw) ? 1 : Math.ceil(quarterRaw / 3),
             };
 
             includeRows.map(includeRow => {
-                const row = $(`.fi-row:contains("${includeRow.searchFor}")`).parent();
+                const row = $(`div.column:contains("${includeRow.searchFor}")`).parent();
                 if (row.html() !== null) {
-                    const value: string = $(row).find(`div:nth-child(${i + 2})`).text();
+                    const value: string = $(row).find(`div.column:nth-child(${i + 2})`).text();
                     let saveValue: number | undefined = value === '-' ? undefined : parseInt(value.replaceAll(',', ''));
                     const saveAs = includeRow.saveAs;
                     parsedData[saveAs] = saveValue;
@@ -128,9 +128,9 @@ class YahooService extends Service implements YahooServiceInterface {
 
             await page.setViewport({ width: 1080, height: 1024 });
 
-            await page.waitForSelector('td[data-test="MARKET_CAP-value"]');
+            await page.waitForSelector('fin-streamer[data-field="marketCap"]');
 
-            const marketCapText = await page.$eval('td[data-test="MARKET_CAP-value"]', element => element.innerHTML);
+            const marketCapText = await page.$eval('fin-streamer[data-field="marketCap"]', element => element.innerHTML);
 
             await page.close();
 
