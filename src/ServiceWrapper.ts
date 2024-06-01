@@ -96,7 +96,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                 const allKeys = await client.keys('*');
                 if (allKeys === null) return;
 
-                const stocks = allKeys.filter(key => !nonStockKeys.includes(key));
+                const stocks = allKeys.filter((key: string) => !nonStockKeys.includes(key));
 
                 for (let stockKey of stocks) {
                     const stock = await new Stock(stockKey).load();
