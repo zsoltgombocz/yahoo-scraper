@@ -219,8 +219,8 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                 .writeFile(`./public/${year}-${month < 10 ? '0' + month : month}.xlsx`);
 
             logger.info(`[SERVICE-WRAPPER]: Excel created!`);
-        } catch (error) {
-            logger.error(`[SERVICE-WRAPPER]: Error while creating excel: ${error}`);
+        } catch (error: any) {
+            logger.error(`[SERVICE-WRAPPER]: Error while creating excel: ${error}\n Trace: ${error.stack}`);
         }
     }
 }
