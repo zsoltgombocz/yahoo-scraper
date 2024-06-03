@@ -142,7 +142,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                 { name: listType.QUARTERLY_OK, data: tab4 },
                 { name: listType.QUARTERLY_NO, data: tab5 }
             ];
-
+            console.log(tabs);
             tabs.forEach(tab => {
                 const worksheet = workbook.addWorksheet(tab.name);
 
@@ -157,8 +157,10 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
             ]);
 
             okStocks.forEach(stock => {
+                console.log('stock:', stock);
                 const lastYearIncome: BalanceInterface | undefined =
                     stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
+                console.log(lastYearIncome, stock.financials?.balance?.annual);
                 const lastYearAssets = lastYearIncome?.totalAssets || 0;
                 const lastYearLiabilities = lastYearIncome?.totalLiabilities || 0
                 const incomePercentages: number[] | undefined = stock.computed?.income?.annualPercentages;
