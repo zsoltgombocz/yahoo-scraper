@@ -160,6 +160,8 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                     return;
                 }
 
+                console.log(stock?.financials?.balance?.annual?.length, 'okstock1');
+
                 const lastYearIncome: BalanceInterface | undefined =
                     stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
                 
@@ -193,7 +195,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                     if(stock.financials?.balance?.annual === undefined) {
                         return;
                     }
-
+                    console.log(stock?.financials?.balance?.annual?.length, 'okstock2');
                     const lastYearIncome: BalanceInterface | undefined =
                         stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
 
