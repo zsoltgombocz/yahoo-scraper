@@ -186,8 +186,10 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                     stock.computed?.income?.annualPercentages.length === 4
                 )
                 .forEach(stock => {
+                    console.log('stock:', stock);
                     const lastYearIncome: BalanceInterface | undefined =
                         stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
+                    console.log(lastYearIncome);
                     const lastYearAssets = lastYearIncome?.totalAssets || 0;
                     const lastYearLiabilities = lastYearIncome?.totalLiabilities || 0
 
