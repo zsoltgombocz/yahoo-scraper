@@ -215,6 +215,8 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
             const year = new Date().getFullYear();
             const month = new Date().getMonth() + 1;
 
+            console.log(year, month);
+
             await workbook.xlsx
                 .writeFile(`./public/${year}-${month < 10 ? '0' + month : month}.xlsx`);
 
