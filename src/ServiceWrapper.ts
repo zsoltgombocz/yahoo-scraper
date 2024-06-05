@@ -159,17 +159,14 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                 if(stock.financials?.balance?.annual === undefined) {
                     return;
                 }
-
-                console.log(stock?.financials?.balance?.annual?.length, 'okstock1');
-
+                
                 const lastYearIncome: BalanceInterface | undefined =
                     stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
-                
                 const lastYearAssets = lastYearIncome?.totalAssets || 0;
                 const lastYearLiabilities = lastYearIncome?.totalLiabilities || 0
-                const incomePercentages: number[] | undefined = stock.computed?.income?.annualPercentages;
-                const incomePercentageRows = incomePercentages == undefined ? new Array(5).fill(" ") : [...incomePercentages, ...(new Array(5 - incomePercentages?.length).fill(" "))];
+                const incomePercentages: number[] | undefined = stock.computed?.income?.annualPercentages?.filter((percentage) => percentage);
 
+                const incomePercentageRows = incomePercentages == undefined ? new Array(5).fill(" ") : [...incomePercentages, ...(new Array(5 - incomePercentages?.length).fill(" "))];
                 percentWorksheet.addRow([
                     stock.name,
                     stock?.sector,
@@ -195,7 +192,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                     if(stock.financials?.balance?.annual === undefined) {
                         return;
                     }
-                    console.log(stock?.financials?.balance?.annual?.length, 'okstock2');
+
                     const lastYearIncome: BalanceInterface | undefined =
                         stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
 
@@ -214,8 +211,6 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
 
             const year = new Date().getFullYear();
             const month = new Date().getMonth() + 1;
-
-            console.log(year, month);
 
             await workbook.xlsx
                 .writeFile(`./public/${year}-${month < 10 ? '0' + month : month}.xlsx`);
