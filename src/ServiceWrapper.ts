@@ -40,7 +40,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
         if (process.env.FETCH_ON_START === "1") {
             try {
                 logger.info(`[SERVICE-WRAPPER]: Fething data on start...`);
-                //await this.saveFinvizStocks();
+                await this.saveFinvizStocks();
                 await this.updateStocks();
             } catch (error) {
                 logger.info(`[SERVICE-WRAPPER-RUN]: ${error}`);
