@@ -1,13 +1,12 @@
-import moment from "moment";
-import Stock, { BalanceInterface, IncomeInterface } from "./Stock";
+import Stock from "./Stock";
 import FinvizService, { finvizStock } from "./services/FinvizService";
 import YahooService from "./services/YahooService";
-import { listType, scraperStatus } from "./types";
-import { client, nonStockKeys } from "./redis/client";
+import { listType } from "./types";
 import { logger } from "./utils/logger";
 import { BROWSER } from "./browser";
 import ExcelJS from 'exceljs';
 import cron from 'node-cron';
+import StockModel from './mongo/Stock';
 
 export interface ServiceWrapperInterface {
     finvizService: FinvizService;
@@ -27,7 +26,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
 
     run = async (): Promise<void> => {
         const everyMonth = "0 0 15 1-12 *";
-        const every3Day = "0 0 15 1-12 *";
+        const every3Day = "0 0 */3 * *";
 
         cron.schedule(everyMonth, () => {
             this.generateExcel();
@@ -41,7 +40,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
         if (process.env.FETCH_ON_START === "1") {
             try {
                 logger.info(`[SERVICE-WRAPPER]: Fething data on start...`);
-                await this.saveFinvizStocks();
+                //await this.saveFinvizStocks();
                 await this.updateStocks();
             } catch (error) {
                 logger.info(`[SERVICE-WRAPPER-RUN]: ${error}`);
@@ -50,35 +49,19 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
         }
     }
 
-    getStocks = async (): Promise<Stock[]> => {
-        let keys: string[] = await client.keys('*');
-        let stockKeys = keys.filter(key => !nonStockKeys.includes(key));
-
-        for (let stockKey of stockKeys) {
-            const stock = await new Stock(stockKey).load();
-
-            this.stocks.push(stock);
-        }
-
-        return this.stocks;
-    }
-
     saveFinvizStocks = async () => {
         try {
-            const lastUpdate = await this.finvizService.getLastUpdate();
-            const diff = moment.unix(lastUpdate / 1000 || 0).add(1, 'days').diff(moment.now(), 'hours');
+            const scrapedStocks: finvizStock[] = await this.finvizService.getFinvizData();
 
-            if ((diff < 1 || lastUpdate === 0) ||
-                (diff > 1 && this.finvizService.getStatus() !== scraperStatus.FINISHED)
-            ) {
-                const scrapedStocks: finvizStock[] = await this.finvizService.getFinvizData();
-                for (let i = 0; i < scrapedStocks.length; i++) {
-                    await new Stock(
-                        scrapedStocks[i].name,
-                        scrapedStocks[i].country,
-                        scrapedStocks[i].sector
-                    ).save();
-                }
+            for (let i = 0; i < scrapedStocks.length; i++) {
+                const stock = scrapedStocks[i];
+                const res = await StockModel.findOneAndUpdate(
+                    { name: stock.name }, 
+                    { $set: { country: stock.country, sector: stock.sector} }, 
+                    { upsert: true, new: true }
+                );
+
+                logger.info(`[MongoDB]: Stock updated, id: ${res.id}`)
             }
         } catch (error) {
             logger.info(`[SERVICE-WRAPPER-SAVE-STOCKS]: ${error}`);
@@ -87,35 +70,30 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
 
     updateStocks = async () => {
         try {
-            const lastUpdate = await this.yahooService.getLastUpdate();
-            const diff = moment.unix(lastUpdate / 1000 || 0).add(1, 'days').diff(moment.now(), 'hours');
+            const stocks = await StockModel.find();
 
-            if ((diff < 1 || lastUpdate === 0) ||
-                (diff > 1 && this.yahooService.getStatus() !== scraperStatus.FINISHED)
-            ) {
-                const allKeys = await client.keys('*');
-                if (allKeys === null) return;
+            for (const stock of stocks) {
+                const financialData = await this.yahooService.getFinancialData(stock.name);
+                if(financialData === null) {
+                    logger.info(`[SERVICE-WRAPPER]: Got null as financial data for ${stock.name}`);
+                    return;
+                }
+                
+                stock.set('financials', financialData);
+                const computedEligibility = Stock.getEligibility(financialData);
+                const computedIncomePercentages = Stock.getIncomePercentage(financialData);
 
-                const stocks = allKeys.filter((key: string) => !nonStockKeys.includes(key));
-
-                for (let stockKey of stocks) {
-                    const stock = await new Stock(stockKey).load();
-                    const financialData = await this.yahooService.getFinancialData(stockKey);
-
-                    if (financialData === null) {
-                        logger.info(`[SERVICE-WRAPPER]: Got null as financial data for ${stockKey}`);
-                        continue;
-                    }
-
-                    stock.setFinancials(financialData);
-                    stock.updateEligibility();
-                    stock.updateIncomePercentage();
-                    stock.sortStock();
-                    await stock.save();
+                if(computedEligibility && computedIncomePercentages) {
+                    const eligibleListTypes = Stock.getListTypes(computedEligibility);
+                    stock.set('computed', {...computedEligibility, ...computedIncomePercentages});
+                    stock.set('list', eligibleListTypes);
                 }
 
-                BROWSER?.close();
+                await stock.save();
+                logger.info(`[SERVICE-WRAPPER]: Updated stock "${stock.name}" from yahoo.`);
             }
+
+            BROWSER?.close();
         } catch (error) {
             logger.info(`[SERVICE-WRAPPER-UPDATE-STOCKS]: ${error}`);
         }
@@ -125,7 +103,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
         try {
             const workbook = new ExcelJS.Workbook();
 
-            const stocks = await this.getStocks();
+            const stocks = await StockModel.find();
 
             const okStocks = stocks.filter(stock => stock.list.includes(listType.ANNUAL_OK_QUARTERLY_OK));
 
@@ -145,7 +123,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
             tabs.forEach(tab => {
                 const worksheet = workbook.addWorksheet(tab.name);
 
-                tab.data.forEach((stock: Stock) => {
+                tab.data.forEach((stock) => {
                     worksheet.addRow([stock.name]);
                 });
             });
@@ -160,7 +138,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                     return;
                 }
                 
-                const lastYearIncome: BalanceInterface | undefined =
+                const lastYearIncome =
                     stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
                 const lastYearAssets = lastYearIncome?.totalAssets || 0;
                 const lastYearLiabilities = lastYearIncome?.totalLiabilities || 0
@@ -184,8 +162,8 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
 
             okStocks
                 .filter(stock =>
-                    stock.hasFourAnnualBalance() &&
-                    stock.hasFourQuarterlyBalance() &&
+                    Stock.hasFourAnnualBalance(stock) &&
+                    Stock.hasFourQuarterlyBalance(stock) &&
                     stock.computed?.income?.annualPercentages.length === 4
                 )
                 .forEach(stock => {
@@ -193,7 +171,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                         return;
                     }
 
-                    const lastYearIncome: BalanceInterface | undefined =
+                    const lastYearIncome =
                         stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
 
                     const lastYearAssets = lastYearIncome?.totalAssets || 0;

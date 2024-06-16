@@ -59,17 +59,17 @@ class YahooService extends Service implements YahooServiceInterface {
 
             await page.setViewport({ width: 1080, height: 1024 });
 
-            await page.waitForSelector('div.table');
+            await page.waitForSelector('div.table', { timeout: 60_000 });
 
             const annualHTML: string = await page.$eval('div.table', element => element.innerHTML);
 
-            await page.waitForSelector('#tab-quarterly', { timeout: 5000 });
+            await page.waitForSelector('#tab-quarterly', { timeout: 60_000 });
 
-            await sleep(1500);
+            await sleep(3000);
 
             await page.click('#tab-quarterly');
 
-            await sleep(1500);
+            await sleep(3000);
 
             const quarterlyHTML: string = await page.$eval('div.table', element => element.innerHTML);
 
@@ -97,7 +97,7 @@ class YahooService extends Service implements YahooServiceInterface {
             const headerText = $(div).text();
 
             let parsedData: { [key: string]: number | undefined } = {
-                year: headerText === 'TTM' ? 0 : parseInt(headerText.split('/')[2]),
+                year: headerText.includes('TTM') ? 0 : parseInt(headerText.split('/')[2]),
                 quarter: quarterRaw < 3 || isNaN(quarterRaw) ? 1 : Math.ceil(quarterRaw / 3),
             };
 
@@ -107,11 +107,17 @@ class YahooService extends Service implements YahooServiceInterface {
                     const value: string = $(row).find(`div.column:nth-child(${i + 2})`).text();
                     let saveValue: number | undefined = value === '-' ? undefined : parseInt(value.replaceAll(',', ''));
                     const saveAs = includeRow.saveAs;
-                    parsedData[saveAs] = saveValue;
+                    if(saveValue!== undefined && ! isNaN(saveValue)) {
+                        parsedData[saveAs] = saveValue;
+                    }
                 }
             })
 
-            parsedArray.push(parsedData);
+            //Only save this object if has the neccessary keys not only the year and quater
+            //Above we only add data to the parsedData object if the value is not a 
+            if(Object.keys(parsedData).length > 2) {
+                parsedArray.push(parsedData);
+            }
         });
 
         return parsedArray;
@@ -128,18 +134,18 @@ class YahooService extends Service implements YahooServiceInterface {
 
             await page.setViewport({ width: 1080, height: 1024 });
 
-            await page.waitForSelector('fin-streamer[data-field="marketCap"]');
+            await page.waitForSelector('fin-streamer[data-field="marketCap"]', { timeout: 60_000 });
 
             const marketCapText = await page.$eval('fin-streamer[data-field="marketCap"]', element => element.innerHTML);
 
             await page.close();
 
             if (marketCapText?.includes('M')) {
-                return Math.round(parseFloat(marketCapText.slice(0, -1)));
+                return parseFloat(marketCapText.slice(0, -1));
             } else if (marketCapText?.includes('B')) {
-                return Math.round(parseFloat(marketCapText.slice(0, -1))) * 1_000;
+                return parseFloat(marketCapText.slice(0, -1)) * 1_000;
             } else {
-                return Math.round(parseFloat(marketCapText.slice(0, -1))) * 1_000_000;
+                return parseFloat(marketCapText.slice(0, -1)) * 1_000_000;
             }
         } catch (error) {
             logger.error(`SERVICE[${this.signature}]: Error while getting market cap: ${error}`);

@@ -8,9 +8,9 @@ const getBrowser = (): Promise<Browser> => {
     return new Promise(async (resolve, reject) => {
         try {
             BROWSER = await puppeteer.launch({
-                protocolTimeout: 360_000,
-                timeout: 120_000,
-                headless: "shell",
+                protocolTimeout: 600_000,
+                timeout: 300_000,
+                headless: process.env.NODE_ENV === 'production' ? "shell" : false,
                 args: process.env.NODE_ENV === 'production' ? [
                     "--no-sandbox",
                     "--disable-gpu",
@@ -28,7 +28,7 @@ const getBrowser = (): Promise<Browser> => {
 export const acceptCookie = (page: Page) => {
     return new Promise(async (resolve) => {
         page.waitForSelector('.accept-all', {
-            timeout: 2000
+            timeout: 5_000
         })
             .then(() => {
                 page.click('.accept-all');
@@ -52,7 +52,7 @@ export const getPage = (url: string): Promise<Page> => {
             } else {
                 await page.goto(url, {
                     waitUntil: "networkidle2",
-                    timeout: 60000
+                    timeout: 300_000
                 });
 
                 resolve(page);

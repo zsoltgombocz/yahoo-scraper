@@ -1,6 +1,7 @@
 import express, { Application } from "express";
 import routes from './routes';
 import { client } from "./redis/client";
+import { connect as connectToMongoDB } from "./mongo/client";
 import 'dotenv/config';
 import { logger } from "./utils/logger";
 import { formatDateMiddleware } from "./utils/formatDate";
@@ -20,6 +21,7 @@ try {
         logger.info(`APP: Connected successfully on port ${PORT}`);
 
         await client.connect();
+        connectToMongoDB();
 
         const finvizService = await new FinvizService(process.env.FINVIZ_BASE_URL, process.env.FINVIZ_EXCLUDE_URL).create();
         const yahooService = await new YahooService(process.env.YAHOO_FINANCE_URL).create();

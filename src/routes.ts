@@ -1,5 +1,5 @@
 import express, { Response, Request, Router } from "express";
-import Stock from "./Stock";
+import Stock from "./mongo/Stock";
 import { ServiceState } from "./utils/ServiceState";
 import ServiceWrapper from "./ServiceWrapper";
 import FinvizService from "./services/FinvizService";
@@ -18,12 +18,8 @@ router.get("/service/:signature", async (req: Request, res: Response): Promise<R
 });
 
 router.get("/stock/:name", async (req: Request, res: Response): Promise<Response> => {
-    const stock = await new Stock(req.params.name).load();
-
-    if (!stock.exists) {
-        return res.status(404).send();
-    }
-
+    const stock = await Stock.find({ name: req.params.name });
+    
     return res.status(200).json(stock);
 });
 

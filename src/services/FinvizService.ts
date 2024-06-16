@@ -106,7 +106,7 @@ export default class FinvizService extends Service implements FinvizServiceInter
         });
     }
 
-    //? We have to scrape twice to filter out stocks that are can be found in the exlude url
+    //? We have to scrape twice to filter out stocks that are can be found in the exclude url
     getFinvizData = async (): Promise<finvizStock[]> => {
         this.setStatus(scraperStatus.PENDING);
         if (this.finvizBaseUrl === undefined || this.finvizExcludeUrl === undefined) {

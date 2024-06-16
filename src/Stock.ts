@@ -1,24 +1,5 @@
-import { registerCustomQueryHandler } from "puppeteer";
-import { client } from "./redis/client";
 import { listType } from "./types";
-import { logger } from "./utils/logger";
 import { hasAtLeastTwoNegativeNumbers, notEmpty } from "./utils/arrayHelpers";
-
-export interface StockInterface {
-    name: string;
-    country: string | null;
-    sector: string | null;
-    financials: FinancialInterface | null;
-    computed: ComputedInterface | null;
-    list: listType[]; //? Based on balance (annual and\or quarterly) store lists,
-    timestamp?: number;
-    loaded: boolean;
-    exists: boolean;
-
-    save: () => void;
-    setFinancials: (financials: Partial<FinancialInterface>) => void;
-    updateEligibility: () => void;
-}
 
 export interface FinancialInterface {
     balance?: {
@@ -60,73 +41,22 @@ export interface ComputedInterface {
     }
 }
 
-export default class Stock implements StockInterface {
-    name: string;
-    country: string | null;
-    sector: string | null;
-    list: listType[];
-    financials: FinancialInterface | null;
-    computed: ComputedInterface | null;
-    timestamp?: number;
-    loaded: boolean;
-    exists: boolean;
+export default class Stock {
+    static getEligibility = (financialData: FinancialInterface): Partial<ComputedInterface> | null => {
+        if (!financialData?.balance) return null;
 
-    constructor(name: string, country?: string, sector?: string) {
-        this.name = name;
-        this.country = country || null;
-        this.sector = sector || null;
-        this.list = [];
-        this.financials = null;
-        this.computed = null;
-        this.loaded = false;
-        this.exists = false;
-    }
+        const annual = financialData.balance.annual;
+        const quarterly = financialData.balance.quarterly;
 
-    save = async (): Promise<void> => {
-        this.timestamp = new Date().getTime();
-        await client.set(this.name, JSON.stringify(this));
-
-        logger.info(`STOCK[${this.name}]: Saved!`)
-    }
-
-    load = async (): Promise<Stock> => {
-        const rawData: string | null = await client.get(this.name);
-
-        if (rawData === null) return this;
-
-        try {
-            const data: StockInterface = JSON.parse(rawData);
-            this.#set(data);
-            this.loaded = true;
-            this.exists = true;
-
-            return this;
-        } catch (error) {
-            logger.error(`STOCK[${this.name}]: Unable to parse loaded data.`);
-            return this;
-        }
-    }
-
-    setFinancials = (financials: Partial<FinancialInterface>): void => {
-        this.financials = financials;
-    }
-
-    updateEligibility = (): void => {
-        if (!this.financials?.balance) return;
-
-        const annual = this.financials.balance.annual;
-        const quarterly = this.financials.balance.quarterly;
-
-        if (quarterly.length === 0 || annual.length === 0) return undefined;
+        if (quarterly.length === 0 || annual.length === 0) return null;
 
         const annualPass = annual.every(
-            (data: BalanceInterface) => this.checkFinancials(data.totalAssets, data.totalLiabilities, data.totalEquity)
+            (data: BalanceInterface) => Stock.checkFinancials(data.totalAssets, data.totalLiabilities, data.totalEquity)
         );
 
-        const quarterlyPass = this.checkFinancials(quarterly[0].totalAssets, quarterly[0].totalLiabilities, quarterly[0].totalEquity);
-
-        this.computed = {
-            ...this.computed,
+        const quarterlyPass = Stock.checkFinancials(quarterly[0].totalAssets, quarterly[0].totalLiabilities, quarterly[0].totalEquity);
+        
+        return {
             financial: {
                 eligible: {
                     annual: annualPass,
@@ -134,11 +64,9 @@ export default class Stock implements StockInterface {
                 }
             }
         };
-
-        logger.info(`STOCK[${this.name}]: Updated computed financials (financial). Computed: ${JSON.stringify(this.computed)}`);
     }
 
-    checkFinancials = (
+    static checkFinancials = (
         totalAssets: number | undefined, totalLiabilities: number | undefined, totalEquity: number | undefined
     ): boolean | undefined => {
         if (totalAssets === undefined || totalLiabilities === undefined || totalEquity === undefined) return undefined;
@@ -146,11 +74,11 @@ export default class Stock implements StockInterface {
         return (totalLiabilities * 1.5) < totalAssets && (totalEquity * 2.5) > totalLiabilities;
     }
 
-    updateIncomePercentage = (): void => {
+    static getIncomePercentage = (financialData: FinancialInterface): Partial<ComputedInterface> | null => {
 
-        if (!this.financials || !this.financials?.income) return;
+        if (!financialData || !financialData?.income) return null;
 
-        const percentages: number[] = this.financials.income.map(
+        const percentages: number[] = financialData.income.map(
             (incomeData: IncomeInterface) => {
                 if (incomeData.NICS === undefined || incomeData.totalRevenue === undefined) return null;
                 if (incomeData.totalRevenue === 0) return null;
@@ -168,30 +96,20 @@ export default class Stock implements StockInterface {
         const maxPercentage = percentages.reduce((a, b) => Math.max(a, b), -Infinity);
         const percentageAvg = (percetangeSum - maxPercentage) / (percentages.filter(perc => perc !== null).length - 1)
 
-        this.computed = {
-            ...this.computed,
+        return {
             income: {
                 annualPercentages: percentages,
                 avgPercentage: hasMoreThanTwoMinuses ? null : percentageAvg,
             }
         }
-
-        logger.info(`STOCK[${this.name}]: Updated computed financials (income). Computed: ${JSON.stringify(this.computed)}`);
     }
 
-    sortStock = () => {
-        const listTypes = this.getListTypes();
-        this.list = listTypes;
-
-        logger.info(`STOCK[${this.name}]: Added to lists: ${JSON.stringify(listTypes)}`);
-    }
-
-    getListTypes = (): listType[] => {
+    static getListTypes = (financialEligibility: Partial<ComputedInterface>): listType[] => {
         let types: listType[] = [];
 
-        if (!this.computed?.financial || !this.computed.financial.eligible) return types;
+        if (!financialEligibility || !financialEligibility.financial?.eligible) return types;
 
-        const { annual, quarterly } = this.computed!.financial!.eligible;
+        const { annual, quarterly } = financialEligibility.financial?.eligible;
 
         if (annual === true) {
             types.push(listType.ANNUAL_OK);
@@ -214,20 +132,11 @@ export default class Stock implements StockInterface {
         return types;
     }
 
-    hasFourAnnualBalance = (): boolean => {
-        return this.financials?.income?.length === 4;
+    static hasFourAnnualBalance = (stock: any): boolean => {
+        return stock.financials?.income?.length === 4;
     }
 
-    hasFourQuarterlyBalance = (): boolean => {
-        return this.financials?.income?.length === 4;
-    }
-
-    #set = (data: Partial<StockInterface>) => {
-        this.country = data.country || null;
-        this.sector = data.sector || null;
-        this.list = data.list || [];
-        this.financials = data.financials || null;
-        this.computed = data.computed || null;
-        this.timestamp = data.timestamp || this.timestamp;
+    static hasFourQuarterlyBalance = (stock: any): boolean => {
+        return stock.financials?.income?.length === 4;
     }
 }
