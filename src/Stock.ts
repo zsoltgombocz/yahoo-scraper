@@ -75,8 +75,7 @@ export default class Stock {
     }
 
     static getIncomePercentage = (financialData: FinancialInterface): Partial<ComputedInterface> | null => {
-
-        if (!financialData || !financialData?.income) return null;
+        if (!financialData || !financialData?.income || financialData.income.length < 2) return null;
 
         const percentages: number[] = financialData.income.map(
             (incomeData: IncomeInterface) => {
@@ -94,12 +93,12 @@ export default class Stock {
             0
         );
         const maxPercentage = percentages.reduce((a, b) => Math.max(a, b), -Infinity);
-        const percentageAvg = (percetangeSum - maxPercentage) / (percentages.filter(perc => perc !== null).length - 1)
+        const percentageAvg = (percetangeSum - maxPercentage) / (percentages.length);
 
         return {
             income: {
                 annualPercentages: percentages,
-                avgPercentage: hasMoreThanTwoMinuses ? null : percentageAvg,
+                avgPercentage: hasMoreThanTwoMinuses || percentageAvg === 0 || percentages.length < 2 ? null : percentageAvg,
             }
         }
     }
