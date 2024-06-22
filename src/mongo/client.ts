@@ -5,10 +5,10 @@ export const connect = () => {
     mongoose.connect(process.env.MONGODB_URL ?? 'mongodb://localhost:27017')
     .then(
         () => logger.info('MONGODB: Connected to database.'),
-        err => logger.error('MONGODB: Connection error: ', err.message)
+        err => logger.error('MONGODB: Connection error: ', err)
     );
     
     mongoose.connection.on('error', err => {
-        logger.error('MONGODB: ',err.message);
+        logger.error('MONGODB: ', err);
     });
 }
