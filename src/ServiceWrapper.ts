@@ -93,6 +93,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
                 logger.info(`[SERVICE-WRAPPER]: Updated stock "${stock.name}" from yahoo.`);
             }
 
+            logger.info(`[SERVICE-WRAPPER]: Finished updating all stocks from yahoo.`);
             BROWSER?.close();
         } catch (error) {
             logger.info(`[SERVICE-WRAPPER-UPDATE-STOCKS]: ${error}`);
