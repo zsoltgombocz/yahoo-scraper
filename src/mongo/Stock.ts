@@ -24,7 +24,7 @@ const FinancialSchema = new Schema({
         quarterly: [BalanceSchema],
     },
     income: [IncomeSchema],
-    marketCap: { type: Number },
+    marketCap: { type: Number, require: false },
 }, { _id: false });
 
 // Schema for ComputedInterface (assuming structure)

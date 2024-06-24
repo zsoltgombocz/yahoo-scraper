@@ -140,6 +140,10 @@ class YahooService extends Service implements YahooServiceInterface {
 
             await page.close();
 
+            if(isNaN(parseFloat(marketCapText))) {
+                return undefined;
+            }
+
             if (marketCapText?.includes('M')) {
                 return parseFloat(marketCapText.slice(0, -1));
             } else if (marketCapText?.includes('B')) {
