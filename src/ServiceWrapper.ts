@@ -164,8 +164,7 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
             okStocks
                 .filter(stock =>
                     Stock.hasFourAnnualBalance(stock) &&
-                    Stock.hasFourQuarterlyBalance(stock) &&
-                    stock.computed?.income?.annualPercentages.length === 4
+                    Stock.hasFourQuarterlyBalance(stock)
                 )
                 .forEach(stock => {
                     if(stock.financials?.balance?.annual === undefined) {
