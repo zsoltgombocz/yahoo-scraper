@@ -132,10 +132,10 @@ export default class Stock {
     }
 
     static hasFourAnnualBalance = (stock: any): boolean => {
-        return stock.financials?.income?.length === 4;
+        return stock.financials?.balance?.annual.length >= 4;
     }
 
     static hasFourQuarterlyBalance = (stock: any): boolean => {
-        return stock.financials?.income?.length === 4;
+        return stock.financials?.balance?.quarterly.length >= 4;
     }
 }

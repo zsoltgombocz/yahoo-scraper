@@ -26,13 +26,13 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
 
     run = async (): Promise<void> => {
         const everyMonth = "0 0 15 1-12 *";
-        const every3Day = "0 0 */3 * *";
+        const every10Day = "0 2 */10 * *";
 
         cron.schedule(everyMonth, () => {
             this.generateExcel();
         });
 
-        cron.schedule(every3Day, async () => {
+        cron.schedule(every10Day, async () => {
             await this.saveFinvizStocks();
             await this.updateStocks();
         });
@@ -164,13 +164,10 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
             okStocks
                 .filter(stock =>
                     Stock.hasFourAnnualBalance(stock) &&
-                    Stock.hasFourQuarterlyBalance(stock)
+                    Stock.hasFourQuarterlyBalance(stock) && 
+                    stock.computed.income?.avgPercentage
                 )
                 .forEach(stock => {
-                    if(stock.financials?.balance?.annual === undefined) {
-                        return;
-                    }
-
                     const lastYearIncome =
                         stock.financials?.balance?.annual?.[stock?.financials?.balance?.annual?.length - 1];
 
