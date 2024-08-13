@@ -49,6 +49,8 @@ const StockSchema = new Schema({
     financials: { type: FinancialSchema, default: null },
     computed: { type: ComputedSchema, default: null },
     list: { type: [String], enum: Object.values(listType), required: true },
+    failed: { type: Boolean, default: false},
+    error_msg: { type: String }
 }, { timestamps: true });
 
 const Stock = model('Stock', StockSchema, 'stocks');

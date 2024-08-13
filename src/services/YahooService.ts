@@ -79,10 +79,10 @@ class YahooService extends Service implements YahooServiceInterface {
                 annualTableHTML: annualHTML,
                 quarterlyTableHTML: quarterlyHTML,
             }
-        } catch (error) {
+        } catch (error: any) {
             await page?.close();
             logger.error(`SERVICE[${this.signature}]: Error while getting ${type} raw HTML: ${error}`);
-            return null;
+            throw new Error(error);
         }
     }
 
@@ -151,9 +151,9 @@ class YahooService extends Service implements YahooServiceInterface {
             } else {
                 return parseFloat(marketCapText.slice(0, -1)) * 1_000_000;
             }
-        } catch (error) {
+        } catch (error: any) {
             logger.error(`SERVICE[${this.signature}]: Error while getting market cap: ${error}`);
-            return undefined;
+            throw new Error(error);
         }
 
     }
@@ -168,11 +168,10 @@ class YahooService extends Service implements YahooServiceInterface {
             const parsedData = this.#parseDataFromHTML(html.annualTableHTML);
 
             return parsedData as IncomeInterface[];
-        } catch (error) {
+        } catch (error: any) {
             logger.error(`SERVICE[${this.signature}]: Error while parsing income data from HTML: ${error}`);
+            throw new Error(error);
         }
-
-        return incomeData;
     }
 
     #getBalanceData = async (stock: string): Promise<{ annual: BalanceInterface[], quarterly: BalanceInterface[] }> => {
@@ -190,17 +189,13 @@ class YahooService extends Service implements YahooServiceInterface {
                 annual: parsedAnnualData as BalanceInterface[],
                 quarterly: parsedQuarterlyData as BalanceInterface[],
             };
-        } catch (error) {
+        } catch (error: any) {
             logger.error(`SERVICE[${this.signature}]: Error while parsing income data from HTML: ${error}`);
+            throw new Error(error);
         }
-
-        return {
-            annual: [],
-            quarterly: [],
-        };
     }
 
-    getFinancialData = async (stock: string): Promise<FinancialInterface | null> => {
+    getFinancialData = async (stock: string): Promise<FinancialInterface | {message: String, isError: boolean}> => {
         try {
             const marketCap = await this.#getMarketCap(stock);
             const incomeData = await this.#getIncomeData(stock);
@@ -213,7 +208,7 @@ class YahooService extends Service implements YahooServiceInterface {
             } as FinancialInterface;
         } catch (error) {
             logger.error(`SERVICE[${this.signature}]: Error while getting financial data: ${error}`);
-            return null;
+            return { message: `SERVICE[${this.signature}]: Error while getting financial data: ${error}`, isError: true};
         }
     }
 }

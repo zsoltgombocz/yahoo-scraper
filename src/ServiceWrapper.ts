@@ -3,7 +3,7 @@ import FinvizService, { finvizStock } from "./services/FinvizService";
 import YahooService from "./services/YahooService";
 import { listType } from "./types";
 import { logger } from "./utils/logger";
-import { BROWSER } from "./browser";
+import { BROWSER, closeBrowser } from "./browser";
 import ExcelJS from 'exceljs';
 import cron from 'node-cron';
 import StockModel from './mongo/Stock';
@@ -68,29 +68,37 @@ export default class ServiceWrapper implements ServiceWrapperInterface {
         }
     }
 
-    updateStocks = async () => {
+    updateStocks = async (onlyFailed: boolean = false) => {
         try {
-            const stocks = await StockModel.find();
+            const stocks = await StockModel.find(onlyFailed ? { failed: true } : {});
+            logger.info(`[SERVICE-WRAPPER]: Found ${stocks.length} stock to update.`);
 
             for (const stock of stocks) {
                 const financialData = await this.yahooService.getFinancialData(stock.name);
-                if(financialData === null) {
+                if('isError' in financialData) {
                     logger.info(`[SERVICE-WRAPPER]: Got null as financial data for ${stock.name}`);
-                    return;
-                }
-                
-                stock.set('financials', financialData);
-                const computedEligibility = Stock.getEligibility(financialData);
-                const computedIncomePercentages = Stock.getIncomePercentage(financialData);
+                    stock.failed = true;
+                    stock.error_msg = financialData.message.toString();
 
-                if(computedEligibility && computedIncomePercentages) {
-                    const eligibleListTypes = Stock.getListTypes(computedEligibility);
-                    stock.set('computed', {...computedEligibility, ...computedIncomePercentages});
-                    stock.set('list', eligibleListTypes);
+                    closeBrowser();
+                }else{
+                    stock.set('financials', financialData);
+                    const computedEligibility = Stock.getEligibility(financialData);
+                    const computedIncomePercentages = Stock.getIncomePercentage(financialData);
+    
+                    if(computedEligibility && computedIncomePercentages) {
+                        const eligibleListTypes = Stock.getListTypes(computedEligibility);
+                        stock.set('computed', {...computedEligibility, ...computedIncomePercentages});
+                        stock.set('list', eligibleListTypes);
+                    }
+
+                    stock.failed = false;
+                    stock.error_msg = null;
+     
+                    logger.info(`[SERVICE-WRAPPER]: Updated stock "${stock.name}" from yahoo.`);
                 }
 
                 await stock.save();
-                logger.info(`[SERVICE-WRAPPER]: Updated stock "${stock.name}" from yahoo.`);
             }
 
             logger.info(`[SERVICE-WRAPPER]: Finished updating all stocks from yahoo.`);

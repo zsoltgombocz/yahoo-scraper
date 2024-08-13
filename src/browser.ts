@@ -1,12 +1,19 @@
-import puppeteer, { Browser, Page } from "puppeteer";
+import { Browser, Page } from "puppeteer";
+import puppeteer from "puppeteer-extra";
 import 'dotenv/config';
 import { logger } from "./utils/logger";
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
 
 export let BROWSER: Browser | null = null;
 
 const getBrowser = (): Promise<Browser> => {
     return new Promise(async (resolve, reject) => {
         try {
+            BROWSER?.close();
+            //puppeteer.use(StealthPlugin());
+            //puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
+            
             BROWSER = await puppeteer.launch({
                 protocolTimeout: 600_000,
                 timeout: 300_000,
@@ -58,7 +65,13 @@ export const getPage = (url: string): Promise<Page> => {
                 resolve(page);
             }
         } catch (error) {
+            logger.error('[BROWSER]: Error while getting page...', error)
             reject(error);
         }
     })
+}
+
+export const closeBrowser = () => {
+    BROWSER?.close();
+    BROWSER = null;
 }

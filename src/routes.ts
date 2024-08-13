@@ -23,6 +23,13 @@ router.get("/stock/:name", async (req: Request, res: Response): Promise<Response
     return res.status(200).json(stock);
 });
 
+router.get("/stocks/update-failed", async (_: Request, res: Response): Promise<Response> => {
+    const yahooService = await new YahooService(process.env.YAHOO_FINANCE_URL).create();
+    const serviceWrapper = new ServiceWrapper({} as FinvizService, yahooService);
+    await serviceWrapper.updateStocks(true);
+    return res.status(200);
+});
+
 router.get('/download/:year/:month', async (req: Request, res: Response): Promise<any> => {
     const year = req.params.year;
     const month = req.params.month;
